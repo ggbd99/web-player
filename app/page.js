@@ -414,13 +414,18 @@ export default function App() {
           </div>
           {/* Show watch progress info */}
           {historyItem && hasProgress && (
-            <div className="mt-2 text-xs text-muted-foreground flex items-center gap-1">
-              <Clock className="w-3 h-3" />
-              {historyItem.type === 'tv' ? (
-                <span>S{historyItem.season} E{historyItem.episode} • {Math.round(progressPercent)}%</span>
-              ) : (
-                <span>{formatTime(historyItem.progress)} / {formatTime(historyItem.duration)}</span>
+            <div className="mt-2 text-xs text-muted-foreground space-y-0.5">
+              {historyItem.type === 'tv' && (
+                <div className="font-medium text-red-400">
+                  S{historyItem.season} E{historyItem.episode}
+                </div>
               )}
+              <div className="flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                <span className="font-medium">
+                  {formatTime(historyItem.progress)} / {formatTime(historyItem.duration)}
+                </span>
+              </div>
             </div>
           )}
         </CardContent>
