@@ -313,10 +313,43 @@ export default function App() {
     const type = selectedMedia.media_type
     const id = selectedMedia.id
 
+    // Build URL with proper parameters for VidKing player
     if (type === 'tv') {
-      return `https://www.vidking.net/embed/tv/${id}/${currentSeason}/${currentEpisode}`
+      // TV shows: enable episode selector and next episode features
+      const baseUrl = `https://www.vidking.net/embed/tv/${id}/${currentSeason}/${currentEpisode}`
+      const params = new URLSearchParams({
+        episodeSelector: 'true',
+        nextEpisode: 'true',
+        color: 'e50914' // Netflix red color
+      })
+      
+      // Add resume position if available
+      const historyItem = watchHistory.find(item => 
+        item.id === id && item.type === 'tv' && 
+        item.season === currentSeason && item.episode === currentEpisode
+      )
+      if (historyItem && historyItem.progress) {
+        params.append('progress', Math.floor(historyItem.progress))
+      }
+      
+      return `${baseUrl}?${params.toString()}`
     }
-    return `https://www.vidking.net/embed/movie/${id}`
+    
+    // Movies
+    const baseUrl = `https://www.vidking.net/embed/movie/${id}`
+    const params = new URLSearchParams({
+      color: 'e50914' // Netflix red color
+    })
+    
+    // Add resume position if available
+    const historyItem = watchHistory.find(item => 
+      item.id === id && item.type === 'movie'
+    )
+    if (historyItem && historyItem.progress) {
+      params.append('progress', Math.floor(historyItem.progress))
+    }
+    
+    return `${baseUrl}?${params.toString()}`
   }
 
   function MediaCard({ media, onClick }) {
