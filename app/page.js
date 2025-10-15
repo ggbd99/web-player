@@ -896,23 +896,20 @@ export default function App() {
                         <h3 className="font-semibold truncate text-sm mb-1">{item.title}</h3>
                         {/* Watch info with timestamp */}
                         <div className="space-y-1">
-                          <div className="text-xs text-muted-foreground flex items-center justify-between">
-                            {item.type === 'tv' && (
-                              <span className="font-medium text-red-400">S{item.season} E{item.episode}</span>
-                            )}
-                            {item.progress && item.duration ? (
-                              <span className="text-xs">
-                                {formatTime(item.progress)} / {formatTime(item.duration)}
-                              </span>
-                            ) : null}
-                          </div>
-                          {/* Timestamp */}
-                          {item.updatedAt && (
-                            <div className="text-xs text-muted-foreground/70 flex items-center gap-1">
-                              <Clock className="w-3 h-3" />
-                              <span>{getRelativeTime(item.updatedAt)}</span>
+                          {item.type === 'tv' && (
+                            <div className="text-xs font-medium text-red-400">
+                              S{item.season} E{item.episode}
                             </div>
                           )}
+                          {/* Watched time progress */}
+                          {item.progress && item.duration ? (
+                            <div className="text-xs text-muted-foreground flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              <span className="font-medium">
+                                {formatTime(item.progress)} / {formatTime(item.duration)}
+                              </span>
+                            </div>
+                          ) : null}
                         </div>
                       </CardContent>
                     </div>
