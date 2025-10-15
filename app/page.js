@@ -580,11 +580,16 @@ export default function App() {
 
           {/* Search Results */}
           {searchResults.length > 0 && (
-            <div className="mb-8">
-              <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                <Search className="w-5 h-5" /> Search Results
-              </h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+            <div className="mb-12">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
+                  <Search className="w-5 h-5" />
+                </div>
+                <h2 className="text-3xl font-black bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+                  Search Results
+                </h2>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
                 {searchResults.slice(0, 12).map(media => (
                   <MediaCard key={media.id} media={media} onClick={startWatching} />
                 ))}
@@ -593,13 +598,18 @@ export default function App() {
           )}
 
           {/* Home Tab */}
-          <TabsContent value="home">
+          <TabsContent value="home" className="space-y-12">
             {/* Trending */}
-            <section className="mb-8">
-              <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
-                <TrendingUp className="w-6 h-6 text-red-600" /> Trending This Week
-              </h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+            <section>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center shadow-lg shadow-red-500/50">
+                  <TrendingUp className="w-5 h-5" />
+                </div>
+                <h2 className="text-3xl font-black bg-gradient-to-r from-orange-400 to-red-400 bg-clip-text text-transparent">
+                  Trending This Week
+                </h2>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
                 {trending.slice(0, 12).map(media => (
                   <MediaCard key={media.id} media={media} onClick={startWatching} />
                 ))}
@@ -607,11 +617,16 @@ export default function App() {
             </section>
 
             {/* Popular Movies */}
-            <section className="mb-8">
-              <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
-                <Film className="w-6 h-6" /> Popular Movies
-              </h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+            <section>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/50">
+                  <Film className="w-5 h-5" />
+                </div>
+                <h2 className="text-3xl font-black bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                  Popular Movies
+                </h2>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
                 {popularMovies.slice(0, 12).map(media => (
                   <MediaCard key={media.id} media={{ ...media, media_type: 'movie' }} onClick={startWatching} />
                 ))}
@@ -620,10 +635,15 @@ export default function App() {
 
             {/* Popular TV */}
             <section>
-              <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
-                <Tv className="w-6 h-6" /> Popular TV Shows
-              </h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center shadow-lg shadow-green-500/50">
+                  <Tv className="w-5 h-5" />
+                </div>
+                <h2 className="text-3xl font-black bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">
+                  Popular TV Shows
+                </h2>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
                 {popularTV.slice(0, 12).map(media => (
                   <MediaCard key={media.id} media={{ ...media, media_type: 'tv' }} onClick={startWatching} />
                 ))}
