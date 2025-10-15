@@ -85,14 +85,32 @@ async function handleRoute(request, { params }) {
     // Get movie details
     if (route.startsWith('/tmdb/movie/') && method === 'GET') {
       const id = path[2]
-      const data = await fetchTMDB(`/movie/${id}?append_to_response=credits,videos,similar`)
+      // Support custom append_to_response and include_image_language from query params
+      const appendToResponse = searchParams.get('append_to_response') || 'credits,videos,similar'
+      const includeImageLanguage = searchParams.get('include_image_language')
+      
+      let endpoint = `/movie/${id}?append_to_response=${appendToResponse}`
+      if (includeImageLanguage) {
+        endpoint += `&include_image_language=${includeImageLanguage}`
+      }
+      
+      const data = await fetchTMDB(endpoint)
       return handleCORS(NextResponse.json(data))
     }
 
     // Get TV show details
     if (route.startsWith('/tmdb/tv/') && !route.includes('/season/') && method === 'GET') {
       const id = path[2]
-      const data = await fetchTMDB(`/tv/${id}?append_to_response=credits,videos,similar`)
+      // Support custom append_to_response and include_image_language from query params
+      const appendToResponse = searchParams.get('append_to_response') || 'credits,videos,similar'
+      const includeImageLanguage = searchParams.get('include_image_language')
+      
+      let endpoint = `/tv/${id}?append_to_response=${appendToResponse}`
+      if (includeImageLanguage) {
+        endpoint += `&include_image_language=${includeImageLanguage}`
+      }
+      
+      const data = await fetchTMDB(endpoint)
       return handleCORS(NextResponse.json(data))
     }
 

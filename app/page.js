@@ -155,10 +155,22 @@ export default function App() {
           const heroPromises = results.slice(0, 5).map(item => 
             fetch(`/api/tmdb/${item.media_type}/${item.id}?append_to_response=images&include_image_language=en,null`)
               .then(res => res.json())
-              .catch(() => item)
+              .then(data => {
+                console.log(`Hero item ${item.id} (${item.title || item.name}):`, {
+                  hasImages: !!data.images,
+                  logoCount: data.images?.logos?.length || 0,
+                  firstLogo: data.images?.logos?.[0]?.file_path || 'none'
+                })
+                return data
+              })
+              .catch(err => {
+                console.error('Error fetching hero details:', err)
+                return item
+              })
           )
           
           Promise.all(heroPromises).then(detailedItems => {
+            console.log('All hero details loaded:', detailedItems.length)
             setHeroDetails(detailedItems)
           })
         })
