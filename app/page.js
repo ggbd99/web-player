@@ -214,23 +214,25 @@ export default function App() {
 
   function startWatching(media, season = 1, episode = 1) {
     const type = media.media_type || (media.first_air_date ? 'tv' : 'movie')
+    
+    // CRITICAL: Reset all state when switching to new media
     setSelectedMedia({ ...media, media_type: type })
-    
-    if (type === 'tv') {
-      setCurrentSeason(season)
-      setCurrentEpisode(episode)
-      if (!episodes.length || season !== currentSeason) {
-        loadSeasonEpisodes(media.id, season)
-      }
-      if (!seasons.length) {
-        loadMediaDetails(media)
-      }
-    }
-    
-    setView('watch')
+    setCurrentSeason(season)
+    setCurrentEpisode(episode)
+    setSeasons([])
+    setEpisodes([])
     setPlayerEvents([])
     setLastPlayerState(null)
     setPlayerKey(prev => prev + 1)
+    
+    // Load fresh data for new media
+    if (type === 'tv') {
+      loadMediaDetails(media).then(() => {
+        loadSeasonEpisodes(media.id, season)
+      })
+    }
+    
+    setView('watch')
   }
 
   // Change episode from APP controls
