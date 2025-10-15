@@ -350,28 +350,39 @@ export default function App() {
   // WATCH VIEW - Player with episode controls
   if (view === 'watch' && selectedMedia) {
     return (
-      <div className="min-h-screen bg-background text-foreground">
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-foreground">
         {/* Header with Back Button */}
-        <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b">
+        <header className="sticky top-0 z-50 bg-black/40 backdrop-blur-xl border-b border-white/10">
           <div className="container mx-auto px-4 py-4">
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={() => setView('browse')}>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => setView('browse')}
+                className="hover:bg-white/10 rounded-xl"
+              >
                 <ArrowLeft className="w-5 h-5" />
               </Button>
-              <div>
-                <h1 className="text-xl font-bold">{selectedMedia.title || selectedMedia.name}</h1>
+              <div className="flex-1">
+                <h1 className="text-xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
+                  {selectedMedia.title || selectedMedia.name}
+                </h1>
                 {selectedMedia.media_type === 'tv' && (
-                  <p className="text-sm text-muted-foreground">Season {currentSeason} · Episode {currentEpisode}</p>
+                  <p className="text-sm text-muted-foreground">
+                    <span className="text-red-400 font-semibold">Season {currentSeason}</span>
+                    {' · '}
+                    <span className="text-pink-400 font-semibold">Episode {currentEpisode}</span>
+                  </p>
                 )}
               </div>
               <Button
                 variant="ghost"
                 size="icon"
-                className="ml-auto"
+                className="ml-auto hover:bg-white/10 rounded-xl"
                 onClick={() => toggleBookmark(selectedMedia)}
               >
                 {bookmarks.some(b => b.id === selectedMedia.id) ? (
-                  <BookmarkCheck className="w-5 h-5" />
+                  <BookmarkCheck className="w-5 h-5 text-red-500" />
                 ) : (
                   <Bookmark className="w-5 h-5" />
                 )}
