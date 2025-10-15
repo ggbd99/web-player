@@ -8,10 +8,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Search, Play, Star, Clock, Bookmark, BookmarkCheck, ArrowLeft, TrendingUp, Film, Tv, Info, X, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Search, Play, Star, Clock, Bookmark, BookmarkCheck, ArrowLeft, Film, Tv, Info, ChevronLeft, ChevronRight } from 'lucide-react'
 
 export default function App() {
-  const [view, setView] = useState('browse') // 'browse' or 'watch'
+  const [view, setView] = useState('browse')
   const [activeTab, setActiveTab] = useState('home')
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState([])
@@ -32,34 +32,45 @@ export default function App() {
   const [heroDetails, setHeroDetails] = useState([])
   const iframeRef = useRef(null)
 
-  // Load from localStorage
-  useEffect(() => {
-    const savedHistory = localStorage.getItem('watchHistory')
-    const savedBookmarks = localStorage.getItem('bookmarks')
-    if (savedHistory) setWatchHistory(JSON.parse(savedHistory))
-    if (savedBookmarks) setBookmarks(JSON.parse(savedBookmarks))
-  }, [])
+  // --- START: MODIFIED HERO SLIDER LOGIC ---
+  const [heroTransition, setHeroTransition] = useState(true)
+  const HERO_SLIDE_COUNT = 5
 
   // Auto-rotate hero
   useEffect(() => {
-    if (trending.length > 5) {
-      const interval = setInterval(() => {
-        setHeroIndex(prev => (prev + 1) % 5)
-      }, 5000) // Change every 5 seconds
-      return () => clearInterval(interval)
+    if (trending.length <= HERO_SLIDE_COUNT) return;
+
+    const interval = setInterval(() => {
+      setHeroIndex(prevIndex => prevIndex + 1);
+    }, 7000);
+
+    return () => clearInterval(interval);
+  }, [trending.length]);
+
+  // Handle the infinite loop transition
+  useEffect(() => {
+    // When the slider reaches the cloned slide (the one after the last real slide)
+    if (heroIndex === HERO_SLIDE_COUNT) {
+      // Wait for the transition animation to finish
+      const timer = setTimeout(() => {
+        setHeroTransition(false); // Disable transitions
+        setHeroIndex(0); // Instantly jump back to the first slide
+      }, 700); // This duration MUST match the CSS transition duration
+      return () => clearTimeout(timer);
     }
-  }, [trending])
 
-  // Save to localStorage
-  useEffect(() => {
-    localStorage.setItem('watchHistory', JSON.stringify(watchHistory))
-  }, [watchHistory])
+    // After the jump, we need to re-enable the transition for the next slide animation
+    if (heroIndex === 0 && !heroTransition) {
+      // Use a small timeout to ensure the DOM has updated before re-enabling the transition
+      const timer = setTimeout(() => {
+        setHeroTransition(true);
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [heroIndex, heroTransition]);
+  // --- END: MODIFIED HERO SLIDER LOGIC ---
 
-  useEffect(() => {
-    localStorage.setItem('bookmarks', JSON.stringify(bookmarks))
-  }, [bookmarks])
-
-  // Player event listener - CRITICAL FOR SYNC
+  // Player event listener
   useEffect(() => {
     function handlePlayerMessage(event) {
       try {
@@ -67,49 +78,37 @@ export default function App() {
         if (message.type === 'PLAYER_EVENT') {
           const eventData = message.data
           
-          // Add to event log
           setPlayerEvents(prev => [{
             ...eventData,
             time: new Date().toLocaleTimeString()
           }, ...prev.slice(0, 9)])
 
-          // Detect episode/season change from PLAYER
           if (lastPlayerState && selectedMedia?.media_type === 'tv') {
             const seasonChanged = eventData.season && eventData.season !== lastPlayerState.season
             const episodeChanged = eventData.episode && eventData.episode !== lastPlayerState.episode
             
             if (seasonChanged || episodeChanged) {
-              console.log('🔄 Episode/Season changed in PLAYER!', {
-                from: `S${lastPlayerState.season}E${lastPlayerState.episode}`,
-                to: `S${eventData.season}E${eventData.episode}`
-              })
-              
-              // Update app state to match player
               setCurrentSeason(eventData.season)
               setCurrentEpisode(eventData.episode)
               
-              // Load new season episodes if season changed
               if (seasonChanged) {
                 loadSeasonEpisodes(selectedMedia.id, eventData.season)
               }
             }
           }
 
-          // Update last state
           setLastPlayerState(eventData)
 
-          // Save to history on timeupdate (every 30s)
           if (eventData.event === 'timeupdate' && eventData.currentTime % 30 < 2) {
             saveToHistory(eventData)
           }
 
-          // Save on pause/ended
           if (eventData.event === 'pause' || eventData.event === 'ended') {
             saveToHistory(eventData)
           }
         }
       } catch (e) {
-        // Not a JSON message, ignore
+        // Not a JSON message
       }
     }
 
@@ -125,7 +124,7 @@ export default function App() {
       title: selectedMedia.title || selectedMedia.name,
       poster: selectedMedia.poster_path,
       backdrop: selectedMedia.backdrop_path,
-      type: selectedMedia.media_type,
+      media_type: selectedMedia.media_type,
       progress: eventData.currentTime || 0,
       duration: eventData.duration || 0,
       timestamp: Date.now(),
@@ -137,7 +136,7 @@ export default function App() {
 
     setWatchHistory(prev => {
       const filtered = prev.filter(item => {
-        if (item.type === 'tv') {
+        if (item.media_type === 'tv') {
           return !(item.id === historyItem.id && 
                    item.season === historyItem.season && 
                    item.episode === historyItem.episode)
@@ -150,16 +149,15 @@ export default function App() {
 
   // Fetch data
   useEffect(() => {
-    if (activeTab === 'home') {
+    if (activeTab === 'home' && trending.length === 0) {
       fetch('/api/tmdb/trending?type=all&time=week')
         .then(res => res.json())
         .then(data => {
           const results = data.results || []
           setTrending(results)
           
-          // Fetch detailed data for top 5 hero items to get logos
           const heroPromises = results.slice(0, 5).map(item => 
-            fetch(`/api/tmdb/${item.media_type}/${item.id}?append_to_response=images`)
+            fetch(`/api/tmdb/${item.media_type}/${item.id}?append_to_response=images&include_image_language=en,null`)
               .then(res => res.json())
               .catch(() => item)
           )
@@ -176,16 +174,16 @@ export default function App() {
       fetch('/api/tmdb/popular/tv')
         .then(res => res.json())
         .then(data => setPopularTV(data.results || []))
-    } else if (activeTab === 'movies') {
+    } else if (activeTab === 'movies' && popularMovies.length === 0) {
       fetch('/api/tmdb/popular/movies')
         .then(res => res.json())
         .then(data => setPopularMovies(data.results || []))
-    } else if (activeTab === 'tv') {
+    } else if (activeTab === 'tv' && popularTV.length === 0) {
       fetch('/api/tmdb/popular/tv')
         .then(res => res.json())
         .then(data => setPopularTV(data.results || []))
     }
-  }, [activeTab])
+  }, [activeTab, trending.length, popularMovies.length, popularTV.length])
 
   async function handleSearch(query) {
     if (query.trim().length < 2) {
@@ -199,9 +197,8 @@ export default function App() {
   }
 
   async function startWatching(media) {
-    // Fetch full details
     const type = media.media_type || (media.first_air_date ? 'tv' : 'movie')
-    const res = await fetch(`/api/tmdb/${type}/${media.id}`)
+    const res = await fetch(`/api/tmdb/${type}/${media.id}?append_to_response=credits,similar,images`)
     const fullDetails = await res.json()
     
     fullDetails.media_type = type
@@ -210,28 +207,20 @@ export default function App() {
     if (type === 'tv') {
       setSeasons(fullDetails.seasons || [])
       
-      // Check if we have watch history for this show
-      const historyItem = watchHistory.find(h => h.id === media.id && h.type === 'tv')
+      const historyItem = watchHistory.find(h => h.id === media.id && h.media_type === 'tv')
       if (historyItem) {
         setCurrentSeason(historyItem.season)
         setCurrentEpisode(historyItem.episode)
         await loadSeasonEpisodes(media.id, historyItem.season)
       } else {
-        // Start from S01E01
         setCurrentSeason(1)
         setCurrentEpisode(1)
         await loadSeasonEpisodes(media.id, 1)
       }
-    } else {
-      // Check for movie resume
-      const historyItem = watchHistory.find(h => h.id === media.id && h.type === 'movie')
-      if (historyItem) {
-        // Will resume from saved position via getPlayerUrl()
-      }
     }
     
     setView('watch')
-    setPlayerKey(prev => prev + 1) // Force iframe reload
+    setPlayerKey(prev => prev + 1)
   }
 
   async function loadSeasonEpisodes(tvId, seasonNumber) {
@@ -244,12 +233,12 @@ export default function App() {
     setCurrentSeason(seasonNumber)
     setCurrentEpisode(1)
     await loadSeasonEpisodes(selectedMedia.id, seasonNumber)
-    setPlayerKey(prev => prev + 1) // Force iframe reload with new season
+    setPlayerKey(prev => prev + 1)
   }
 
   function changeEpisode(episodeNumber) {
     setCurrentEpisode(episodeNumber)
-    setPlayerKey(prev => prev + 1) // Force iframe reload
+    setPlayerKey(prev => prev + 1)
   }
 
   function toggleBookmark(media) {
@@ -261,7 +250,7 @@ export default function App() {
         id: media.id,
         title: media.title || media.name,
         poster: media.poster_path,
-        type: media.media_type || (media.first_air_date ? 'tv' : 'movie'),
+        media_type: media.media_type || (media.first_air_date ? 'tv' : 'movie'),
         vote_average: media.vote_average,
         release_date: media.release_date || media.first_air_date
       }, ...bookmarks])
@@ -273,19 +262,16 @@ export default function App() {
     const type = selectedMedia.media_type
     const id = selectedMedia.id
 
-    // Build URL with proper parameters for VidKing player
     if (type === 'tv') {
-      // TV shows: enable episode selector and next episode features
       const baseUrl = `https://www.vidking.net/embed/tv/${id}/${currentSeason}/${currentEpisode}`
       const params = new URLSearchParams({
         episodeSelector: 'true',
         nextEpisode: 'true',
-        color: 'e50914' // Netflix red color
+        color: '6366f1'
       })
       
-      // Add resume position if available
       const historyItem = watchHistory.find(item => 
-        item.id === id && item.type === 'tv' && 
+        item.id === id && item.media_type === 'tv' && 
         item.season === currentSeason && item.episode === currentEpisode
       )
       if (historyItem && historyItem.progress) {
@@ -295,15 +281,13 @@ export default function App() {
       return `${baseUrl}?${params.toString()}`
     }
     
-    // Movies
     const baseUrl = `https://www.vidking.net/embed/movie/${id}`
     const params = new URLSearchParams({
-      color: 'e50914' // Netflix red color
+      color: '6366f1'
     })
     
-    // Add resume position if available
     const historyItem = watchHistory.find(item => 
-      item.id === id && item.type === 'movie'
+      item.id === id && item.media_type === 'movie'
     )
     if (historyItem && historyItem.progress) {
       params.append('progress', Math.floor(historyItem.progress))
@@ -316,12 +300,11 @@ export default function App() {
     const isBookmarked = bookmarks.some(b => b.id === media.id)
     const isTopTen = media.topTenNumber !== undefined
     
-    // Check if this media is in watch history
     const historyItem = watchHistory.find(item => {
       if (media.media_type === 'tv' || media.first_air_date) {
-        return item.id === media.id && item.type === 'tv'
+        return item.id === media.id && item.media_type === 'tv'
       }
-      return item.id === media.id && item.type === 'movie'
+      return item.id === media.id && item.media_type === 'movie'
     })
 
     const hasProgress = historyItem && historyItem.progress && historyItem.duration && 
@@ -335,7 +318,6 @@ export default function App() {
         onClick={() => onClick(media)}
       >
         <div className="relative aspect-[2/3] overflow-hidden rounded bg-zinc-900 mb-2">
-          {/* Top 10 Number Overlay */}
           {isTopTen && (
             <div className="absolute bottom-0 left-0 z-20 text-[140px] sm:text-[160px] font-black leading-none text-white/10 select-none pointer-events-none" style={{
               WebkitTextStroke: '3px rgba(255,255,255,0.4)',
@@ -358,12 +340,10 @@ export default function App() {
             </div>
           )}
 
-          {/* Gradient overlay for Top 10 number visibility */}
           {isTopTen && (
             <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent z-10" />
           )}
 
-          {/* Progress bar */}
           {hasProgress && (
             <div className="absolute bottom-0 left-0 right-0 h-1 bg-zinc-800 z-30">
               <div 
@@ -405,7 +385,6 @@ export default function App() {
           <span className="text-indigo-500 font-black">|</span> {title}
         </h2>
         <div className="relative group/row">
-          {/* Left Arrow - Full Height */}
           <button
             onClick={() => scroll('left')}
             className="absolute left-0 top-0 bottom-0 z-20 bg-gradient-to-r from-black via-black/95 to-transparent hover:from-black hover:via-black w-16 flex items-center justify-start pl-2 opacity-0 group-hover/row:opacity-100 transition-all duration-300"
@@ -416,7 +395,6 @@ export default function App() {
             </div>
           </button>
 
-          {/* Scrollable Content */}
           <div 
             ref={scrollContainerRef}
             className={`flex overflow-x-auto scrollbar-hide px-8 pb-4 ${isTopTen ? 'gap-6' : 'gap-5'}`}
@@ -426,7 +404,6 @@ export default function App() {
             ))}
           </div>
 
-          {/* Right Arrow - Full Height */}
           <button
             onClick={() => scroll('right')}
             className="absolute right-0 top-0 bottom-0 z-20 bg-gradient-to-l from-black via-black/95 to-transparent hover:from-black hover:via-black w-16 flex items-center justify-end pr-2 opacity-0 group-hover/row:opacity-100 transition-all duration-300"
@@ -441,34 +418,10 @@ export default function App() {
     )
   }
 
-  function formatTime(seconds) {
-    if (!seconds) return '0:00'
-    const h = Math.floor(seconds / 3600)
-    const m = Math.floor((seconds % 3600) / 60)
-    const s = Math.floor(seconds % 60)
-    if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
-    return `${m}:${s.toString().padStart(2, '0')}`
-  }
-
-  function getRelativeTime(timestamp) {
-    const now = Date.now()
-    const diff = now - timestamp
-    const seconds = Math.floor(diff / 1000)
-    const minutes = Math.floor(seconds / 60)
-    const hours = Math.floor(minutes / 60)
-    const days = Math.floor(hours / 24)
-
-    if (days > 0) return `${days}d ago`
-    if (hours > 0) return `${hours}h ago`
-    if (minutes > 0) return `${minutes}m ago`
-    return 'just now'
-  }
-
-  // WATCH VIEW - Player with episode controls
+  // WATCH VIEW
   if (view === 'watch' && selectedMedia) {
     return (
       <div className="min-h-screen bg-black text-white">
-        {/* Header with Back Button */}
         <header className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-b from-black/90 to-transparent">
           <div className="container mx-auto px-4 py-6">
             <div className="flex items-center gap-4">
@@ -504,7 +457,6 @@ export default function App() {
           </div>
         </header>
 
-        {/* Player */}
         <div className="pt-16">
           <div className="aspect-video bg-black">
             <iframe
@@ -519,12 +471,9 @@ export default function App() {
           </div>
         </div>
 
-        {/* Content Below Player */}
         <div className="container mx-auto px-4 py-8">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Video Player Column */}
             <div className="lg:col-span-2 space-y-6 order-2 lg:order-1">
-              {/* Stats Cards */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <Card className="bg-zinc-900 border-zinc-800">
                   <CardContent className="p-4 text-center">
@@ -567,7 +516,7 @@ export default function App() {
                 {(selectedMedia.release_date || selectedMedia.first_air_date) && (
                   <Card className="bg-zinc-900 border-zinc-800">
                     <CardContent className="p-4 text-center">
-                      <Clock className="w-6 h-6 text-red-400 mx-auto mb-2" />
+                      <Clock className="w-6 h-6 text-indigo-400 mx-auto mb-2" />
                       <p className="text-2xl font-bold">
                         {selectedMedia.release_date?.split('-')[0] || selectedMedia.first_air_date?.split('-')[0]}
                       </p>
@@ -577,7 +526,6 @@ export default function App() {
                 )}
               </div>
 
-              {/* Tagline */}
               {selectedMedia.tagline && (
                 <Card className="bg-zinc-900 border-zinc-800">
                   <CardContent className="p-4">
@@ -586,12 +534,11 @@ export default function App() {
                 </Card>
               )}
 
-              {/* Overview */}
               <Card className="bg-zinc-900 border-zinc-800">
                 <CardContent className="p-6 space-y-6">
                   <div>
                     <h3 className="text-xl font-semibold mb-3 flex items-center gap-2">
-                      <Info className="w-5 h-5 text-red-500" />
+                      <Info className="w-5 h-5 text-indigo-500" />
                       Overview
                     </h3>
                     <p className="text-zinc-300 leading-relaxed">
@@ -599,7 +546,6 @@ export default function App() {
                     </p>
                   </div>
                   
-                  {/* Genres */}
                   {selectedMedia.genres && selectedMedia.genres.length > 0 && (
                     <div>
                       <h4 className="text-sm font-semibold mb-3 text-zinc-400">Genres</h4>
@@ -613,71 +559,6 @@ export default function App() {
                     </div>
                   )}
                   
-                  {/* Additional Info */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-zinc-800">
-                    {selectedMedia.status && (
-                      <div>
-                        <p className="text-xs text-zinc-500 mb-1">Status</p>
-                        <p className="font-semibold text-zinc-300">{selectedMedia.status}</p>
-                      </div>
-                    )}
-                    {selectedMedia.original_language && (
-                      <div>
-                        <p className="text-xs text-zinc-500 mb-1">Original Language</p>
-                        <p className="font-semibold text-zinc-300 uppercase">{selectedMedia.original_language}</p>
-                      </div>
-                    )}
-                    {selectedMedia.original_title && selectedMedia.original_title !== selectedMedia.title && (
-                      <div>
-                        <p className="text-xs text-zinc-500 mb-1">Original Title</p>
-                        <p className="font-semibold text-zinc-300">{selectedMedia.original_title}</p>
-                      </div>
-                    )}
-                    {selectedMedia.budget && selectedMedia.budget > 0 && (
-                      <div>
-                        <p className="text-xs text-zinc-500 mb-1">Budget</p>
-                        <p className="font-semibold text-zinc-300">${(selectedMedia.budget / 1000000).toFixed(1)}M</p>
-                      </div>
-                    )}
-                    {selectedMedia.revenue && selectedMedia.revenue > 0 && (
-                      <div>
-                        <p className="text-xs text-zinc-500 mb-1">Box Office</p>
-                        <p className="font-semibold text-zinc-300">${(selectedMedia.revenue / 1000000).toFixed(1)}M</p>
-                      </div>
-                    )}
-                    {selectedMedia.vote_count && (
-                      <div>
-                        <p className="text-xs text-zinc-500 mb-1">Total Votes</p>
-                        <p className="font-semibold text-zinc-300">{selectedMedia.vote_count.toLocaleString()}</p>
-                      </div>
-                    )}
-                    {selectedMedia.production_companies && selectedMedia.production_companies.length > 0 && (
-                      <div className="md:col-span-2">
-                        <p className="text-xs text-zinc-500 mb-2">Production Companies</p>
-                        <div className="flex flex-wrap gap-2">
-                          {selectedMedia.production_companies.slice(0, 5).map(company => (
-                            <Badge key={company.id} variant="outline" className="text-xs border-zinc-700 text-zinc-400">
-                              {company.name}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {selectedMedia.production_countries && selectedMedia.production_countries.length > 0 && (
-                      <div className="md:col-span-2">
-                        <p className="text-xs text-zinc-500 mb-2">Production Countries</p>
-                        <div className="flex flex-wrap gap-2">
-                          {selectedMedia.production_countries.map(country => (
-                            <Badge key={country.iso_3166_1} variant="outline" className="text-xs border-zinc-700 text-zinc-400">
-                              {country.name}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* Cast */}
                   {selectedMedia.credits && selectedMedia.credits.cast && selectedMedia.credits.cast.length > 0 && (
                     <div className="pt-6 border-t border-zinc-800">
                       <h4 className="text-lg font-semibold mb-4">Top Cast</h4>
@@ -705,7 +586,6 @@ export default function App() {
                     </div>
                   )}
                   
-                  {/* Similar Titles */}
                   {selectedMedia.similar && selectedMedia.similar.results && selectedMedia.similar.results.length > 0 && (
                     <div className="pt-6 border-t border-zinc-800">
                       <h4 className="text-lg font-semibold mb-4">Similar Titles</h4>
@@ -745,7 +625,6 @@ export default function App() {
               </Card>
             </div>
 
-            {/* Right: Episodes (TV only) */}
             {selectedMedia.media_type === 'tv' && (
               <div className="lg:col-span-1 order-1 lg:order-2">
                 <Card className="bg-zinc-900 border-zinc-800 sticky top-24">
@@ -753,7 +632,6 @@ export default function App() {
                     <div>
                       <h3 className="font-semibold mb-3">Episodes</h3>
                       
-                      {/* Season Selector */}
                       {seasons.length > 0 && (
                         <Select value={currentSeason.toString()} onValueChange={(v) => changeSeason(parseInt(v))}>
                           <SelectTrigger className="bg-zinc-800 border-zinc-700">
@@ -770,7 +648,6 @@ export default function App() {
                       )}
                     </div>
 
-                    {/* Episode List */}
                     <ScrollArea className="h-[600px]">
                       <div className="space-y-2">
                         {episodes.map(episode => (
@@ -793,14 +670,14 @@ export default function App() {
                                   />
                                   {episode.episode_number === currentEpisode && (
                                     <div className="absolute inset-0 flex items-center justify-center bg-black/60">
-                                      <Play className="w-5 h-5 text-red-500" fill="currentColor" />
+                                      <Play className="w-5 h-5 text-indigo-500" fill="currentColor" />
                                     </div>
                                   )}
                                 </div>
                               )}
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-start gap-2 mb-1">
-                                  <span className="font-bold text-sm text-red-500">{episode.episode_number}.</span>
+                                  <span className="font-bold text-sm text-indigo-500">{episode.episode_number}.</span>
                                   <div className="flex-1">
                                     <h4 className="font-medium text-sm line-clamp-1">{episode.name}</h4>
                                     <p className="text-xs text-zinc-500 line-clamp-2 mt-1">{episode.overview || 'No description'}</p>
@@ -822,23 +699,131 @@ export default function App() {
     )
   }
 
-  // BROWSE VIEW - Main app
+  // --- START: MODIFIED HERO JSX ---
+  // Prepare hero slides for infinite loop
+  const heroSlides = trending.slice(0, HERO_SLIDE_COUNT);
+  const heroDetailsForSlides = heroDetails.slice(0, HERO_SLIDE_COUNT);
+  const canCreateLoop = heroSlides.length === HERO_SLIDE_COUNT && heroDetailsForSlides.length === HERO_SLIDE_COUNT;
+  const heroItemsToRender = canCreateLoop ? [...heroSlides, heroSlides[0]] : heroSlides;
+  const heroDetailsToRender = canCreateLoop ? [...heroDetailsForSlides, heroDetailsForSlides[0]] : heroDetailsForSlides;
+
+  // BROWSE VIEW
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-zinc-950/95 backdrop-blur-sm border-b border-zinc-800">
+      {/* Hero Section */}
+      {activeTab === 'home' && trending.length > 0 && (
+        <div className="absolute top-0 left-0 h-screen w-full overflow-hidden z-10">
+          <div
+            className="flex h-full"
+            style={{
+              transform: `translateX(-${heroIndex * 100}%)`,
+              transition: heroTransition ? 'transform 700ms ease-in-out' : 'none'
+            }}
+          >
+            {heroItemsToRender.map((item, index) => {
+              const detailedItem = heroDetailsToRender[index] || item
+              const logoPath = detailedItem.images?.logos?.[0]?.file_path || 
+                             detailedItem.belongs_to_collection?.logo_path
+              
+              return (
+                <div key={`hero-${item.id}-${index}`} className="relative h-full w-full flex-shrink-0">
+                  <div className="absolute inset-0">
+                    {item.backdrop_path ? (
+                      <>
+                        <img 
+                          src={`https://image.tmdb.org/t/p/original${item.backdrop_path}`}
+                          alt={item.title || item.name}
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-r from-black/50 via-transparent to-transparent" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-transparent to-transparent" />
+                      </>
+                    ) : (
+                      <div className="w-full h-full bg-zinc-900" />
+                    )}
+                  </div>
+
+                  <div className="relative container mx-auto px-8 h-full flex items-end pb-32">
+                    <div className="max-w-3xl space-y-6">
+                      {logoPath ? (
+                        <img 
+                          src={`https://image.tmdb.org/t/p/original${logoPath}`}
+                          alt={item.title || item.name}
+                          className="max-h-[80px] md:max-h-[100px] w-auto object-contain"
+                          style={{ filter: 'drop-shadow(0 4px 30px rgba(0,0,0,0.9))' }}
+                        />
+                      ) : (
+                        <h1 className="text-6xl md:text-7xl font-black text-white leading-tight tracking-tight drop-shadow-2xl">
+                          {item.title || item.name}
+                        </h1>
+                      )}
+
+                      <div className="flex items-center gap-4 text-base">
+                        <div className="flex items-center gap-2 bg-indigo-600 px-3 py-1.5 rounded-md shadow-lg">
+                          <Star className="w-5 h-5 fill-white text-white" />
+                          <span className="text-white font-bold">{item.vote_average?.toFixed(1)}</span>
+                        </div>
+                        <span className="text-white font-semibold drop-shadow-lg">
+                          {(item.release_date || item.first_air_date)?.split('-')[0]}
+                        </span>
+                        <span className="px-3 py-1.5 bg-black/70 backdrop-blur-sm text-white text-sm font-bold rounded-md border border-zinc-600 shadow-lg">
+                          {item.media_type === 'tv' ? 'TV SERIES' : 'MOVIE'}
+                        </span>
+                      </div>
+
+                      <p className="text-white text-lg line-clamp-4 leading-relaxed max-w-2xl drop-shadow-lg">
+                        {item.overview}
+                      </p>
+
+                      {detailedItem.genres && detailedItem.genres.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {detailedItem.genres.slice(0, 4).map(genre => (
+                            <span key={genre.id} className="px-3 py-1 bg-black/60 backdrop-blur-sm text-white text-sm rounded-full border border-zinc-700 shadow-md">
+                              {genre.name}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-4 pt-4">
+                        <Button 
+                          size="lg" 
+                          className="bg-white text-black hover:bg-zinc-200 font-bold px-10 py-6 text-lg rounded-md shadow-2xl transition-all hover:scale-105"
+                          onClick={() => startWatching(item)}
+                        >
+                          <Play className="w-6 h-6 mr-2" fill="currentColor" />
+                          Play Now
+                        </Button>
+                        <Button 
+                          size="lg" 
+                          variant="outline" 
+                          className="border-2 border-zinc-400 bg-black/60 backdrop-blur-sm hover:bg-black/80 hover:border-zinc-300 text-white font-bold px-10 py-6 text-lg rounded-md shadow-2xl transition-all hover:scale-105"
+                          onClick={() => startWatching(item)}
+                        >
+                          <Info className="w-6 h-6 mr-2" />
+                          More Info
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+      {/* --- END: MODIFIED HERO JSX --- */}
+
+      <header className="fixed top-0 left-0 right-0 z-40 bg-gradient-to-b from-black/70 to-transparent">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center gap-6">
-            {/* Logo */}
             <h1 className="text-2xl font-bold text-indigo-500">VidKing</h1>
-            
-            {/* Search */}
             <div className="flex-1 max-w-2xl">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400" />
                 <Input
                   placeholder="Search movies, TV shows..."
-                  className="pl-10 bg-zinc-900 border-zinc-800 focus:border-zinc-700 rounded-md"
+                  className="pl-10 bg-zinc-900/80 border-zinc-800 focus:border-zinc-700 rounded-md"
                   value={searchQuery}
                   onChange={(e) => {
                     setSearchQuery(e.target.value)
@@ -851,291 +836,118 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="container mx-auto py-6">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-10">
-          {/* Tab List */}
-          <TabsList className="bg-transparent border-b border-zinc-800 rounded-none p-0 h-auto">
-            <TabsTrigger 
-              value="home" 
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:bg-transparent px-6 py-3"
-            >
-              Home
-            </TabsTrigger>
-            <TabsTrigger 
-              value="movies" 
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:bg-transparent px-6 py-3"
-            >
-              Movies
-            </TabsTrigger>
-            <TabsTrigger 
-              value="tv" 
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:bg-transparent px-6 py-3"
-            >
-              TV Shows
-            </TabsTrigger>
-            <TabsTrigger 
-              value="history" 
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:bg-transparent px-6 py-3"
-            >
-              Continue Watching
-            </TabsTrigger>
-            <TabsTrigger 
-              value="bookmarks" 
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:bg-transparent px-6 py-3"
-            >
-              My List
-            </TabsTrigger>
-          </TabsList>
-
-          {/* Search Results */}
-          {searchResults.length > 0 && (
-            <div className="space-y-4">
-              <h2 className="text-2xl font-bold">
-                <span className="text-indigo-500">|</span> Search Results
-              </h2>
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-4">
-                {searchResults.map(media => (
-                  <MediaCard key={media.id} media={media} onClick={startWatching} />
-                ))}
-              </div>
+      <main className={`relative ${activeTab === 'home' ? 'pt-[100vh]' : 'pt-24'}`}>
+        <div className="bg-zinc-950">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <div className="container mx-auto">
+              <TabsList className="bg-transparent border-b border-zinc-800 rounded-none p-0 h-auto w-full">
+                <TabsTrigger value="home" className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:bg-transparent px-6 py-3">Home</TabsTrigger>
+                <TabsTrigger value="movies" className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:bg-transparent px-6 py-3">Movies</TabsTrigger>
+                <TabsTrigger value="tv" className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:bg-transparent px-6 py-3">TV Shows</TabsTrigger>
+                <TabsTrigger value="history" className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:bg-transparent px-6 py-3">Continue Watching</TabsTrigger>
+                <TabsTrigger value="bookmarks" className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:bg-transparent px-6 py-3">My List</TabsTrigger>
+              </TabsList>
             </div>
-          )}
 
-          {/* Home Tab */}
-          <TabsContent value="home" className="space-y-12 mt-0">
-            {/* Hero Carousel - Full Width */}
-            {trending.length > 0 && (
-              <div className="relative h-screen -mx-4 sm:-mx-6 lg:-mx-8 -mt-6">
-                {/* Carousel Items */}
-                <div className="relative w-full h-full overflow-hidden">
-                  {trending.slice(0, 5).map((item, index) => {
-                    const detailedItem = heroDetails[index] || item
-                    const logoPath = detailedItem.images?.logos?.[0]?.file_path || 
-                                   detailedItem.belongs_to_collection?.logo_path
-                    
-                    return (
-                    <div
-                      key={item.id}
-                      className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
-                        index === heroIndex 
-                          ? 'opacity-100 z-10' 
-                          : 'opacity-0 z-0'
-                      }`}
-                    >
-                      {/* Backdrop Image */}
-                      <div className="absolute inset-0">
-                        {item.backdrop_path ? (
-                          <>
-                            <img 
-                              src={`https://image.tmdb.org/t/p/original${item.backdrop_path}`}
-                              alt={item.title || item.name}
-                              className="w-full h-full object-cover"
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-r from-black via-black/70 to-transparent" />
-                            <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-black/50 to-transparent" />
-                            <div className="absolute inset-0 bg-black/20" />
-                          </>
-                        ) : (
-                          <div className="w-full h-full bg-zinc-900" />
-                        )}
-                      </div>
-
-                      {/* Content */}
-                      <div className="relative container mx-auto px-8 h-full flex items-center">
-                        <div className="max-w-3xl space-y-6">
-                          {/* Logo or Title */}
-                          {logoPath ? (
-                            <img 
-                              src={`https://image.tmdb.org/t/p/original${logoPath}`}
-                              alt={item.title || item.name}
-                              className="max-h-[100px] md:max-h-[140px] w-auto object-contain"
-                              style={{ filter: 'drop-shadow(0 4px 20px rgba(0,0,0,0.8))' }}
-                            />
-                          ) : (
-                            <h1 className="text-6xl md:text-7xl font-black text-white leading-tight tracking-tight">
-                              {item.title || item.name}
-                            </h1>
-                          )}
-
-                          <div className="flex items-center gap-4 text-base">
-                            <div className="flex items-center gap-2 bg-indigo-600 px-3 py-1.5 rounded-md">
-                              <Star className="w-5 h-5 fill-white text-white" />
-                              <span className="text-white font-bold">{item.vote_average?.toFixed(1)}</span>
-                            </div>
-                            <span className="text-zinc-200 font-medium">
-                              {(item.release_date || item.first_air_date)?.split('-')[0]}
-                            </span>
-                            <span className="px-3 py-1.5 bg-zinc-900/80 backdrop-blur-sm text-white text-sm font-bold rounded-md border border-zinc-700">
-                              {item.media_type === 'tv' ? 'TV SERIES' : 'MOVIE'}
-                            </span>
-                          </div>
-
-                          <p className="text-zinc-200 text-xl line-clamp-3 leading-relaxed max-w-2xl">
-                            {item.overview}
-                          </p>
-
-                          <div className="flex items-center gap-4 pt-4">
-                            <Button 
-                              size="lg" 
-                              className="bg-white text-black hover:bg-zinc-200 font-bold px-10 py-6 text-lg rounded-md shadow-lg transition-all hover:scale-105"
-                              onClick={() => startWatching(item)}
-                            >
-                              <Play className="w-6 h-6 mr-2" fill="currentColor" />
-                              Play Now
-                            </Button>
-                            <Button 
-                              size="lg" 
-                              variant="outline" 
-                              className="border-2 border-zinc-600 bg-zinc-900/60 backdrop-blur-sm hover:bg-zinc-800 hover:border-zinc-500 text-white font-bold px-10 py-6 text-lg rounded-md transition-all hover:scale-105"
-                              onClick={() => startWatching(item)}
-                            >
-                              <Info className="w-6 h-6 mr-2" />
-                              More Info
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    )
-                  })}
-                </div>
-
-                {/* Carousel Indicators */}
-                <div className="absolute bottom-12 left-1/2 -translate-x-1/2 flex gap-3 z-20">
-                  {trending.slice(0, 5).map((_, index) => (
-                    <button
-                      key={index}
-                      onClick={() => setHeroIndex(index)}
-                      className={`h-1.5 rounded-full transition-all duration-300 hover:bg-white ${
-                        index === heroIndex 
-                          ? 'bg-white w-12 shadow-lg shadow-white/50' 
-                          : 'bg-white/40 w-8 hover:w-10'
-                      }`}
-                      aria-label={`Go to slide ${index + 1}`}
-                    />
-                  ))}
+            {searchResults.length > 0 && (
+              <div className="container mx-auto py-6 space-y-4">
+                <h2 className="text-2xl font-bold px-4"><span className="text-indigo-500">|</span> Search Results</h2>
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-4 px-4">
+                  {searchResults.map(media => <MediaCard key={media.id} media={media} onClick={startWatching} />)}
                 </div>
               </div>
             )}
 
-            {/* TOP 10 CONTENT TODAY - Scrollable with Buttons */}
-            {trending.length > 0 && (
-              <ScrollableRow 
-                title="TOP 10 CONTENT TODAY" 
-                items={trending.slice(0, 10).map((media, index) => ({
-                  ...media,
-                  topTenNumber: index + 1
-                }))} 
-                onItemClick={startWatching}
-                isTopTen={true}
-              />
-            )}
-
-            {/* Scrollable Rows */}
-            {trending.length > 10 && (
-              <ScrollableRow 
-                title="Trending Now" 
-                items={trending.slice(10, 30)} 
-                onItemClick={startWatching} 
-              />
-            )}
-
-            {popularMovies.length > 0 && (
-              <ScrollableRow 
-                title="Popular Movies" 
-                items={popularMovies} 
-                onItemClick={startWatching} 
-              />
-            )}
-
-            {popularTV.length > 0 && (
-              <ScrollableRow 
-                title="Popular TV Shows" 
-                items={popularTV} 
-                onItemClick={startWatching} 
-              />
-            )}
-          </TabsContent>
-
-          {/* Movies Tab */}
-          <TabsContent value="movies" className="space-y-8 mt-0">
-            {popularMovies.length > 0 && (
-              <ScrollableRow 
-                title="Popular Movies" 
-                items={popularMovies} 
-                onItemClick={startWatching} 
-              />
-            )}
-          </TabsContent>
-
-          {/* TV Shows Tab */}
-          <TabsContent value="tv" className="space-y-8 mt-0">
-            {popularTV.length > 0 && (
-              <ScrollableRow 
-                title="Popular TV Shows" 
-                items={popularTV} 
-                onItemClick={startWatching} 
-              />
-            )}
-          </TabsContent>
-
-          {/* Continue Watching Tab */}
-          <TabsContent value="history" className="space-y-8 mt-0">
-            {watchHistory.length === 0 ? (
-              <div className="text-center py-20">
-                <Clock className="w-16 h-16 text-zinc-700 mx-auto mb-4" />
-                <p className="text-zinc-400 text-lg">No watch history yet</p>
+            <TabsContent value="home" className="space-y-0 mt-0">
+              <div className="py-12 space-y-12">
+                {trending.length > 0 && <ScrollableRow title="TOP 10 CONTENT TODAY" items={trending.slice(0, 10).map((media, index) => ({ ...media, topTenNumber: index + 1 }))} onItemClick={startWatching} isTopTen={true} />}
+                {trending.length > 10 && <ScrollableRow title="Trending Now" items={trending.slice(10, 30)} onItemClick={startWatching} />}
+                {popularMovies.length > 0 && <ScrollableRow title="Popular Movies" items={popularMovies} onItemClick={startWatching} />}
+                {popularTV.length > 0 && <ScrollableRow title="Popular TV Shows" items={popularTV} onItemClick={startWatching} />}
               </div>
-            ) : (
-              <ScrollableRow 
-                title="Continue Watching" 
-                items={watchHistory.map(item => ({
-                  id: item.id,
-                  title: item.title,
-                  name: item.title,
-                  poster_path: item.poster,
-                  media_type: item.type,
-                  vote_average: item.vote_average,
-                  release_date: item.release_date,
-                  first_air_date: item.release_date
-                }))} 
-                onItemClick={(media) => {
-                  const item = watchHistory.find(h => h.id === media.id)
-                  startWatching({...media, media_type: item.type})
-                }} 
-              />
-            )}
-          </TabsContent>
+            </TabsContent>
 
-          {/* My List Tab */}
-          <TabsContent value="bookmarks" className="space-y-8 mt-0">
-            {bookmarks.length === 0 ? (
-              <div className="text-center py-20">
-                <Bookmark className="w-16 h-16 text-zinc-700 mx-auto mb-4" />
-                <p className="text-zinc-400 text-lg">Your list is empty</p>
+            <TabsContent value="movies" className="mt-0">
+              <div className="container mx-auto py-12 space-y-8">
+                {popularMovies.length > 0 ? <ScrollableRow title="Popular Movies" items={popularMovies} onItemClick={startWatching} /> : <div className="text-center py-20"><p>Loading...</p></div>}
               </div>
-            ) : (
-              <ScrollableRow 
-                title="My List" 
-                items={bookmarks.map(item => ({
-                  id: item.id,
-                  title: item.title,
-                  name: item.title,
-                  poster_path: item.poster,
-                  media_type: item.type,
-                  vote_average: item.vote_average,
-                  release_date: item.release_date,
-                  first_air_date: item.release_date
-                }))} 
-                onItemClick={(media) => {
-                  const item = bookmarks.find(b => b.id === media.id)
-                  startWatching({...media, media_type: item.type})
-                }} 
-              />
-            )}
-          </TabsContent>
-        </Tabs>
+            </TabsContent>
+
+            <TabsContent value="tv" className="mt-0">
+              <div className="container mx-auto py-12 space-y-8">
+                {popularTV.length > 0 ? <ScrollableRow title="Popular TV Shows" items={popularTV} onItemClick={startWatching} /> : <div className="text-center py-20"><p>Loading...</p></div>}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="history" className="mt-0">
+              <div className="container mx-auto py-12 space-y-8">
+                {watchHistory.length === 0 ? (
+                  <div className="text-center py-20">
+                    <Clock className="w-16 h-16 text-zinc-700 mx-auto mb-4" />
+                    <p className="text-zinc-400 text-lg">No watch history yet</p>
+                  </div>
+                ) : (
+                  <ScrollableRow 
+                    title="Continue Watching" 
+                    items={watchHistory.map(item => ({
+                      id: item.id,
+                      title: item.title,
+                      name: item.title,
+                      poster_path: item.poster,
+                      media_type: item.media_type,
+                      vote_average: item.vote_average,
+                      release_date: item.release_date,
+                      first_air_date: item.release_date
+                    }))} 
+                    onItemClick={(media) => {
+                      const item = watchHistory.find(h => h.id === media.id)
+                      if (item) {
+                        startWatching({
+                          ...media,
+                          media_type: item.media_type
+                        })
+                      }
+                    }} 
+                  />
+                )}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="bookmarks" className="mt-0">
+              <div className="container mx-auto py-12 space-y-8">
+                {bookmarks.length === 0 ? (
+                  <div className="text-center py-20">
+                    <Bookmark className="w-16 h-16 text-zinc-700 mx-auto mb-4" />
+                    <p className="text-zinc-400 text-lg">Your list is empty</p>
+                  </div>
+                ) : (
+                  <ScrollableRow 
+                    title="My List" 
+                    items={bookmarks.map(item => ({
+                      id: item.id,
+                      title: item.title,
+                      name: item.title,
+                      poster_path: item.poster,
+                      media_type: item.media_type,
+                      vote_average: item.vote_average,
+                      release_date: item.release_date,
+                      first_air_date: item.release_date
+                    }))} 
+                    onItemClick={(media) => {
+                      const item = bookmarks.find(b => b.id === media.id)
+                      if (item) {
+                        startWatching({
+                          ...media,
+                          media_type: item.media_type
+                        })
+                      }
+                    }} 
+                  />
+                )}
+              </div>
+            </TabsContent>
+          </Tabs>
+        </div>
       </main>
     </div>
   )

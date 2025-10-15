@@ -114,6 +114,10 @@ user_problem_statement: |
      - Enhanced Top 10 section with better numbered card design
      - Professional color scheme (indigo instead of red)
      - Better spacing, typography, and overall polish
+  6. NEW FIXES (Latest):
+     - Make hero banner truly full width with no sidebars
+     - Fix scroll position reset issue when hero carousel changes
+     - Integrate TMDB logo images in hero section instead of plain text titles
 
 backend:
   - task: "TMDB API Integration"
@@ -130,6 +134,9 @@ backend:
       - working: true
         agent: "testing"
         comment: "Comprehensive backend testing completed. All core TMDB API endpoints working correctly: search (/api/tmdb/search), trending (/api/tmdb/trending), popular movies/TV, movie/TV details, season details. CORS headers properly configured. Caching working correctly with 15-minute TTL. 18/19 tests passed (94.7%). Minor: Large page numbers return 500 instead of graceful 400 error passthrough, but core functionality unaffected."
+      - working: true
+        agent: "main"
+        comment: "Enhanced TMDB API to support logo image fetching: Added support for append_to_response query parameter, included include_image_language=en,null for logo images, now properly returns logos in images.logos array from TMDB API."
 
 frontend:
   - task: "Hero Banner & Top 10 Section"
@@ -146,11 +153,11 @@ frontend:
 
   - task: "Complete UI Redesign - Clean Professional Look"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/app/page.js"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
@@ -173,6 +180,45 @@ frontend:
       - working: "NA"
         agent: "main"
         comment: "Implemented comprehensive professional UI enhancements: 1) HERO SECTION: Changed from 70vh to fullscreen (100vh), implemented smooth crossfade transitions (opacity-based, 1s duration), enhanced gradient overlays for better text visibility, upgraded to 7xl font-black typography, added premium button styling with hover scale effects, improved carousel indicators with shadow effects. 2) COLOR SCHEME: Replaced all red colors (#ef4444) with sophisticated indigo (#6366f1) throughout the app for a more premium feel. 3) TOP 10 SECTION: Converted to ScrollableRow component with hover-visible scroll buttons, increased card sizes (180-240px), enhanced number overlays (140-160px font, stronger stroke and shadow), improved gradient overlays for number visibility, added better spacing (gap-6). 4) SCROLL BUTTONS: Redesigned all scroll buttons with circular design, border effects (border-zinc-700 with indigo hover), larger size (p-4 with w-7 h-7 chevrons), smooth opacity transitions (300ms), hover scale effect (scale-110), shadow effects. 5) OVERALL POLISH: Increased spacing throughout (py-6, space-y-12, gap-5), better section typography and hierarchy, improved card hover effects (300ms, scale-110), enhanced professional aesthetic matching Cineby reference. Result: Premium, professional streaming interface that matches or exceeds the Cineby reference design."
+      - working: true
+        agent: "main"
+        comment: "Fixed 3 critical UI issues: 1) FULL WIDTH HERO: Restructured layout to make hero section truly full width by moving it outside main container, removed negative margins, now hero takes entire screen width with no sidebars. 2) SCROLL POSITION PRESERVATION: Fixed issue where content would scroll back to top when hero carousel changes - carousel now uses stable keys and absolute positioning that doesn't affect scroll position. 3) LOGO INTEGRATION: Enhanced hero section to display TMDB logo images instead of plain text titles, logos sized at max-h-[60px] md:max-h-[80px] with drop shadows for visibility, graceful fallback to text when logos unavailable. Result: Professional hero banner matching Cineby reference with proper logo display."
+
+  - task: "Full Width Hero Banner Fix"
+    implemented: true
+    working: true
+    file: "/app/app/page.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Restructured page layout to make hero banner truly full width: 1) Moved TabsList outside main container into separate container div, 2) Moved hero carousel outside TabsContent container to break free from padding constraints, 3) Added explicit w-full and overflow-hidden to hero wrapper, 4) Content sections now wrapped in container mx-auto for proper centering, 5) Removed negative margin hacks (-mx-4 etc). Result: Hero banner now takes full screen width with no sidebars, exactly as requested."
+
+  - task: "Scroll Position Reset Fix"
+    implemented: true
+    working: true
+    file: "/app/app/page.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Fixed scroll position reset when hero carousel changes: 1) Added stable unique keys to carousel items (hero-${item.id}-${index}) and indicators (indicator-${index}), 2) Hero carousel uses absolute positioning so transitions don't affect document flow, 3) No layout shifts occur during carousel transitions, 4) Scroll position now maintained when users browse content sections. Verified with automated testing - scroll position stays stable across multiple carousel changes."
+
+  - task: "TMDB Logo Integration"
+    implemented: true
+    working: true
+    file: "/app/app/page.js, /app/app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Implemented TMDB logo image integration in hero section: 1) BACKEND: Updated API routes to accept append_to_response query parameter, added include_image_language=en,null to fetch logo images, 2) FRONTEND: Already fetching detailed data with images for top 5 hero items, extracting logos from images.logos[0].file_path, 3) DISPLAY: Logos shown at max-h-[60px] md:max-h-[80px] (matching Cineby reference), drop-shadow for visibility, graceful fallback to text title when logo unavailable. Verified working with TRON: Ares, The Conjuring: Last Rites, Monster: The Ed Gein Story logos all displaying correctly."
 
   - task: "Video Playback Fix"
     implemented: true
