@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Search, Play, Star, Clock, Bookmark, BookmarkCheck, ArrowLeft, TrendingUp, Film, Tv, Info } from 'lucide-react'
 
 export default function App() {
-  const [view, setView] = useState('browse') // 'browse' or 'watch'
+  const [view, setView] = useState('browse') // 'browse' or 'player'
   const [activeTab, setActiveTab] = useState('home')
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState([])
@@ -19,6 +19,7 @@ export default function App() {
   const [popularMovies, setPopularMovies] = useState([])
   const [popularTV, setPopularTV] = useState([])
   const [selectedMedia, setSelectedMedia] = useState(null)
+  const [showDetails, setShowDetails] = useState(false)
   const [currentSeason, setCurrentSeason] = useState(1)
   const [currentEpisode, setCurrentEpisode] = useState(1)
   const [seasons, setSeasons] = useState([])
@@ -212,46 +213,13 @@ export default function App() {
     }
   }
 
-  function startWatching(media, season = 1, episode = 1) {
-    const type = media.media_type || (media.first_air_date ? 'tv' : 'movie')
-    setSelectedMedia({ ...media, media_type: type })
-    
-    if (type === 'tv') {
-      setCurrentSeason(season)
-      setCurrentEpisode(episode)
-      if (!episodes.length || season !== currentSeason) {
-        loadSeasonEpisodes(media.id, season)
-      }
-      if (!seasons.length) {
-        loadMediaDetails(media)
-      }
-    }
-    
-    setView('watch')
+  function openPlayer(media, season = 1, episode = 1) {
+    setSelectedMedia(media)
+    setCurrentSeason(season)
+    setCurrentEpisode(episode)
+    setPlayerOpen(true)
     setPlayerEvents([])
     setLastPlayerState(null)
-    setPlayerKey(prev => prev + 1)
-  }
-
-  // Change episode from APP controls
-  function changeEpisode(seasonNum, episodeNum) {
-    setCurrentSeason(seasonNum)
-    setCurrentEpisode(episodeNum)
-    setPlayerKey(prev => prev + 1) // Force iframe reload
-    setPlayerEvents([])
-    setLastPlayerState(null)
-    console.log('🎬 Episode changed from APP controls:', `S${seasonNum}E${episodeNum}`)
-  }
-
-  // Change season from APP controls
-  function changeSeason(seasonNum) {
-    setCurrentSeason(seasonNum)
-    setCurrentEpisode(1)
-    loadSeasonEpisodes(selectedMedia.id, seasonNum)
-    setPlayerKey(prev => prev + 1)
-    setPlayerEvents([])
-    setLastPlayerState(null)
-    console.log('🎬 Season changed from APP controls:', `S${seasonNum}`)
   }
 
   function toggleBookmark(media) {
@@ -332,184 +300,6 @@ export default function App() {
     )
   }
 
-  // WATCH VIEW - Player with episode controls
-  if (view === 'watch' && selectedMedia) {
-    return (
-      <div className="min-h-screen bg-background text-foreground">
-        {/* Header with Back Button */}
-        <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b">
-          <div className="container mx-auto px-4 py-4">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={() => setView('browse')}>
-                <ArrowLeft className="w-5 h-5" />
-              </Button>
-              <div>
-                <h1 className="text-xl font-bold">{selectedMedia.title || selectedMedia.name}</h1>
-                {selectedMedia.media_type === 'tv' && (
-                  <p className="text-sm text-muted-foreground">Season {currentSeason} · Episode {currentEpisode}</p>
-                )}
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="ml-auto"
-                onClick={() => toggleBookmark(selectedMedia)}
-              >
-                {bookmarks.some(b => b.id === selectedMedia.id) ? (
-                  <BookmarkCheck className="w-5 h-5" />
-                ) : (
-                  <Bookmark className="w-5 h-5" />
-                )}
-              </Button>
-            </div>
-          </div>
-        </header>
-
-        {/* Player and Controls Layout */}
-        <div className="container mx-auto px-4 py-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left: Player */}
-            <div className="lg:col-span-2">
-              <div className="aspect-video bg-black rounded-lg overflow-hidden mb-4">
-                <iframe
-                  key={playerKey}
-                  ref={iframeRef}
-                  src={getPlayerUrl()}
-                  className="w-full h-full"
-                  frameBorder="0"
-                  allowFullScreen
-                  allow="autoplay; encrypted-media"
-                />
-              </div>
-
-              {/* Player Events Debug */}
-              <Card>
-                <CardContent className="p-4">
-                  <h3 className="font-semibold mb-2 flex items-center gap-2">
-                    🎬 Player Events (Real-time Sync)
-                    <Badge variant="outline">S{currentSeason}E{currentEpisode}</Badge>
-                  </h3>
-                  <ScrollArea className="h-24">
-                    <div className="space-y-1 text-xs font-mono">
-                      {playerEvents.length === 0 && (
-                        <p className="text-muted-foreground">Waiting for player events...</p>
-                      )}
-                      {playerEvents.map((event, idx) => (
-                        <div key={idx} className="p-2 bg-muted rounded">
-                          <span className="text-muted-foreground">{event.time}</span>
-                          {' '}
-                          <span className="text-primary font-semibold">{event.event}</span>
-                          {event.season && <span> | S{event.season}E{event.episode}</span>}
-                          {event.currentTime && <span> | {Math.floor(event.currentTime)}s</span>}
-                        </div>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                </CardContent>
-              </Card>
-
-              {/* Media Info */}
-              <div className="mt-4">
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="flex items-center gap-2">
-                    <Star className="w-5 h-5 fill-yellow-500 text-yellow-500" />
-                    <span className="font-semibold">{selectedMedia.vote_average?.toFixed(1)}</span>
-                  </div>
-                  <Badge>{selectedMedia.media_type === 'tv' ? 'TV Series' : 'Movie'}</Badge>
-                  {selectedMedia.release_date && (
-                    <span className="text-sm text-muted-foreground">
-                      {selectedMedia.release_date.split('-')[0]}
-                    </span>
-                  )}
-                  {selectedMedia.first_air_date && (
-                    <span className="text-sm text-muted-foreground">
-                      {selectedMedia.first_air_date.split('-')[0]}
-                    </span>
-                  )}
-                </div>
-                <p className="text-muted-foreground">{selectedMedia.overview}</p>
-                {selectedMedia.genres && (
-                  <div className="flex flex-wrap gap-2 mt-4">
-                    {selectedMedia.genres.map(genre => (
-                      <Badge key={genre.id} variant="secondary">{genre.name}</Badge>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Right: Episode List (TV only) */}
-            {selectedMedia.media_type === 'tv' && (
-              <div className="lg:col-span-1">
-                <Card>
-                  <CardContent className="p-4">
-                    <h3 className="text-lg font-bold mb-3">Episodes</h3>
-                    
-                    <Select value={String(currentSeason)} onValueChange={(val) => changeSeason(Number(val))}>
-                      <SelectTrigger className="mb-4">
-                        <SelectValue placeholder="Select season" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {seasons.map(season => (
-                          <SelectItem key={season.season_number} value={String(season.season_number)}>
-                            Season {season.season_number}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-
-                    <ScrollArea className="h-[600px]">
-                      <div className="space-y-2">
-                        {episodes.map(episode => (
-                          <Card 
-                            key={episode.episode_number}
-                            className={`cursor-pointer hover:bg-accent transition-colors ${
-                              episode.episode_number === currentEpisode ? 'ring-2 ring-primary' : ''
-                            }`}
-                            onClick={() => changeEpisode(currentSeason, episode.episode_number)}
-                          >
-                            <CardContent className="p-3">
-                              <div className="flex gap-3">
-                                <div className="w-24 aspect-video bg-muted rounded overflow-hidden flex-shrink-0">
-                                  {episode.still_path ? (
-                                    <img 
-                                      src={`https://image.tmdb.org/t/p/w300${episode.still_path}`}
-                                      alt={episode.name}
-                                      className="w-full h-full object-cover"
-                                    />
-                                  ) : (
-                                    <div className="w-full h-full flex items-center justify-center">
-                                      <Tv className="w-6 h-6 text-muted-foreground" />
-                                    </div>
-                                  )}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <span className="font-semibold text-sm">{episode.episode_number}.</span>
-                                    <h4 className="font-semibold text-sm truncate">{episode.name}</h4>
-                                  </div>
-                                  <p className="text-xs text-muted-foreground line-clamp-2">{episode.overview}</p>
-                                  {episode.episode_number === currentEpisode && (
-                                    <Badge variant="default" className="mt-1 text-xs">Now Playing</Badge>
-                                  )}
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // BROWSE VIEW - Main app
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Header */}
@@ -556,7 +346,7 @@ export default function App() {
               </h2>
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                 {searchResults.slice(0, 12).map(media => (
-                  <MediaCard key={media.id} media={media} onClick={startWatching} />
+                  <MediaCard key={media.id} media={media} onClick={loadMediaDetails} />
                 ))}
               </div>
             </div>
@@ -571,7 +361,7 @@ export default function App() {
               </h2>
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                 {trending.slice(0, 12).map(media => (
-                  <MediaCard key={media.id} media={media} onClick={startWatching} />
+                  <MediaCard key={media.id} media={media} onClick={loadMediaDetails} />
                 ))}
               </div>
             </section>
@@ -583,7 +373,7 @@ export default function App() {
               </h2>
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                 {popularMovies.slice(0, 12).map(media => (
-                  <MediaCard key={media.id} media={{ ...media, media_type: 'movie' }} onClick={startWatching} />
+                  <MediaCard key={media.id} media={{ ...media, media_type: 'movie' }} onClick={loadMediaDetails} />
                 ))}
               </div>
             </section>
@@ -595,7 +385,7 @@ export default function App() {
               </h2>
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                 {popularTV.slice(0, 12).map(media => (
-                  <MediaCard key={media.id} media={{ ...media, media_type: 'tv' }} onClick={startWatching} />
+                  <MediaCard key={media.id} media={{ ...media, media_type: 'tv' }} onClick={loadMediaDetails} />
                 ))}
               </div>
             </section>
@@ -605,7 +395,7 @@ export default function App() {
           <TabsContent value="movies">
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
               {popularMovies.map(media => (
-                <MediaCard key={media.id} media={{ ...media, media_type: 'movie' }} onClick={startWatching} />
+                <MediaCard key={media.id} media={{ ...media, media_type: 'movie' }} onClick={loadMediaDetails} />
               ))}
             </div>
           </TabsContent>
@@ -614,7 +404,7 @@ export default function App() {
           <TabsContent value="tv">
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
               {popularTV.map(media => (
-                <MediaCard key={media.id} media={{ ...media, media_type: 'tv' }} onClick={startWatching} />
+                <MediaCard key={media.id} media={{ ...media, media_type: 'tv' }} onClick={loadMediaDetails} />
               ))}
             </div>
           </TabsContent>
@@ -630,7 +420,7 @@ export default function App() {
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                 {watchHistory.map((item, idx) => (
                   <Card key={idx} className="group cursor-pointer hover:ring-2 hover:ring-primary transition-all overflow-hidden"
-                    onClick={() => startWatching({ id: item.id, title: item.title, name: item.title, media_type: item.type, poster_path: item.poster }, item.season || 1, item.episode || 1)}>
+                    onClick={() => openPlayer({ id: item.id, title: item.title, name: item.title, media_type: item.type, poster_path: item.poster }, item.season || 1, item.episode || 1)}>
                     <div className="relative aspect-[2/3]">
                       {item.poster ? (
                         <img src={`https://image.tmdb.org/t/p/w500${item.poster}`} alt={item.title} className="w-full h-full object-cover" />
@@ -666,13 +456,183 @@ export default function App() {
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                 {bookmarks.map(item => (
-                  <MediaCard key={item.id} media={item} onClick={startWatching} />
+                  <MediaCard key={item.id} media={item} onClick={loadMediaDetails} />
                 ))}
               </div>
             )}
           </TabsContent>
         </Tabs>
       </main>
+
+      {/* Media Details Dialog */}
+      <Dialog open={!!selectedMedia && !playerOpen} onOpenChange={() => setSelectedMedia(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          {selectedMedia && (
+            <div>
+              <div className="relative aspect-video mb-4 rounded-lg overflow-hidden">
+                {selectedMedia.backdrop_path ? (
+                  <img
+                    src={`https://image.tmdb.org/t/p/original${selectedMedia.backdrop_path}`}
+                    alt={selectedMedia.title || selectedMedia.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-muted" />
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent" />
+              </div>
+              
+              <DialogHeader>
+                <DialogTitle className="text-3xl">{selectedMedia.title || selectedMedia.name}</DialogTitle>
+              </DialogHeader>
+
+              <div className="flex items-center gap-4 my-4">
+                <Button onClick={() => openPlayer(selectedMedia)} size="lg">
+                  <Play className="w-5 h-5 mr-2" /> Play
+                </Button>
+                <Button variant="outline" onClick={() => toggleBookmark(selectedMedia)}>
+                  {bookmarks.some(b => b.id === selectedMedia.id) ? <BookmarkCheck className="w-5 h-5" /> : <Bookmark className="w-5 h-5" />}
+                </Button>
+                <div className="flex items-center gap-2">
+                  <Star className="w-5 h-5 fill-yellow-500 text-yellow-500" />
+                  <span className="font-semibold">{selectedMedia.vote_average?.toFixed(1)}</span>
+                </div>
+                <Badge>{selectedMedia.media_type === 'tv' ? 'TV Series' : 'Movie'}</Badge>
+              </div>
+
+              <p className="text-muted-foreground mb-4">{selectedMedia.overview}</p>
+
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Release Date</p>
+                  <p className="font-semibold">{selectedMedia.release_date || selectedMedia.first_air_date}</p>
+                </div>
+                {selectedMedia.runtime && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Runtime</p>
+                    <p className="font-semibold">{selectedMedia.runtime} min</p>
+                  </div>
+                )}
+                {selectedMedia.number_of_seasons && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Seasons</p>
+                    <p className="font-semibold">{selectedMedia.number_of_seasons}</p>
+                  </div>
+                )}
+              </div>
+
+              {selectedMedia.genres && (
+                <div className="mb-4">
+                  <p className="text-sm text-muted-foreground mb-2">Genres</p>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedMedia.genres.map(genre => (
+                      <Badge key={genre.id} variant="secondary">{genre.name}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {selectedMedia.media_type === 'tv' && seasons.length > 0 && (
+                <div>
+                  <h3 className="text-xl font-bold mb-3">Episodes</h3>
+                  <Select value={String(currentSeason)} onValueChange={(val) => {
+                    setCurrentSeason(Number(val))
+                    loadSeasonEpisodes(selectedMedia.id, Number(val))
+                  }}>
+                    <SelectTrigger className="w-48 mb-4">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {seasons.map(season => (
+                        <SelectItem key={season.season_number} value={String(season.season_number)}>
+                          Season {season.season_number}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <ScrollArea className="h-64">
+                    <div className="space-y-2">
+                      {episodes.map(episode => (
+                        <Card key={episode.episode_number} className="cursor-pointer hover:bg-accent"
+                          onClick={() => openPlayer(selectedMedia, currentSeason, episode.episode_number)}>
+                          <CardContent className="p-4 flex gap-4">
+                            <div className="w-32 aspect-video bg-muted rounded overflow-hidden flex-shrink-0">
+                              {episode.still_path && (
+                                <img src={`https://image.tmdb.org/t/p/w300${episode.still_path}`} alt={episode.name} className="w-full h-full object-cover" />
+                              )}
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="font-semibold">{episode.episode_number}.</span>
+                                <h4 className="font-semibold">{episode.name}</h4>
+                              </div>
+                              <p className="text-sm text-muted-foreground line-clamp-2">{episode.overview}</p>
+                            </div>
+                            <Button size="icon" variant="ghost">
+                              <Play className="w-4 h-4" />
+                            </Button>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Player Dialog */}
+      <Dialog open={playerOpen} onOpenChange={setPlayerOpen}>
+        <DialogContent className="max-w-7xl max-h-[95vh] p-0">
+          <div className="relative">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-2 right-2 z-50 bg-black/50 hover:bg-black/70"
+              onClick={() => setPlayerOpen(false)}
+            >
+              <X className="w-4 h-4" />
+            </Button>
+            
+            <div className="aspect-video bg-black">
+              {playerOpen && (
+                <iframe
+                  ref={iframeRef}
+                  src={getPlayerUrl()}
+                  className="w-full h-full"
+                  frameBorder="0"
+                  allowFullScreen
+                  allow="autoplay; encrypted-media"
+                />
+              )}
+            </div>
+
+            {/* Player Events Debug Panel */}
+            <div className="p-4 bg-muted/50">
+              <h3 className="font-semibold mb-2 flex items-center gap-2">
+                🎬 Player Events (Real-time Sync)
+                <Badge variant="outline">S{currentSeason}E{currentEpisode}</Badge>
+              </h3>
+              <ScrollArea className="h-32">
+                <div className="space-y-1 text-xs font-mono">
+                  {playerEvents.map((event, idx) => (
+                    <div key={idx} className="p-2 bg-background rounded">
+                      <span className="text-muted-foreground">{event.time}</span>
+                      {' '}
+                      <span className="text-primary font-semibold">{event.event}</span>
+                      {event.season && <span> | S{event.season}E{event.episode}</span>}
+                      {event.currentTime && <span> | {Math.floor(event.currentTime)}s</span>}
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
