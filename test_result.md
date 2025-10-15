@@ -121,6 +121,9 @@ backend:
       - working: true
         agent: "main"
         comment: "TMDB API routes working correctly - trending, search, movie/tv details, season details all functional"
+      - working: true
+        agent: "testing"
+        comment: "Comprehensive backend testing completed. All core TMDB API endpoints working correctly: search (/api/tmdb/search), trending (/api/tmdb/trending), popular movies/TV, movie/TV details, season details. CORS headers properly configured. Caching working correctly with 15-minute TTL. 18/19 tests passed (94.7%). Minor: Large page numbers return 500 instead of graceful 400 error passthrough, but core functionality unaffected."
 
 frontend:
   - task: "Resume Functionality in MediaCard"
