@@ -809,24 +809,45 @@ export default function App() {
                         ) : (
                           <div className="w-full h-full bg-muted flex items-center justify-center"><Film className="w-12 h-12 text-muted-foreground" /></div>
                         )}
-                        <div className="absolute bottom-0 left-0 right-0 h-1 bg-muted">
-                          <div className="h-full bg-red-600" style={{ width: `${(item.progress / item.duration) * 100}%` }} />
+                        <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-black/60">
+                          <div className="h-full bg-gradient-to-r from-red-600 to-pink-600" style={{ width: `${(item.progress / item.duration) * 100}%` }} />
                         </div>
                         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <Button size="icon" className="rounded-full"><Play className="w-6 h-6" /></Button>
+                          <div className="text-center">
+                            <div className="w-14 h-14 mx-auto rounded-full bg-red-600 hover:bg-red-700 flex items-center justify-center shadow-xl mb-2">
+                              <Play className="w-6 h-6 ml-1" fill="white" />
+                            </div>
+                            <p className="text-xs text-white font-medium">Resume</p>
+                          </div>
+                        </div>
+                        {/* Resume badge */}
+                        <div className="absolute top-2 left-2">
+                          <Badge className="bg-gradient-to-r from-red-600 to-pink-600 text-white text-xs font-bold border-0 shadow-lg">
+                            Resume
+                          </Badge>
                         </div>
                       </div>
-                      <CardContent className="p-3">
+                      <CardContent className="p-3 bg-gradient-to-b from-card to-card/80">
                         <h3 className="font-semibold truncate text-sm mb-1">{item.title}</h3>
-                        <div className="text-xs text-muted-foreground flex items-center justify-between">
-                          {item.type === 'tv' && (
-                            <span>S{item.season} E{item.episode}</span>
+                        {/* Watch info with timestamp */}
+                        <div className="space-y-1">
+                          <div className="text-xs text-muted-foreground flex items-center justify-between">
+                            {item.type === 'tv' && (
+                              <span className="font-medium text-red-400">S{item.season} E{item.episode}</span>
+                            )}
+                            {item.progress && item.duration ? (
+                              <span className="text-xs">
+                                {formatTime(item.progress)} / {formatTime(item.duration)}
+                              </span>
+                            ) : null}
+                          </div>
+                          {/* Timestamp */}
+                          {item.updatedAt && (
+                            <div className="text-xs text-muted-foreground/70 flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              <span>{getRelativeTime(item.updatedAt)}</span>
+                            </div>
                           )}
-                          {item.progress && item.duration ? (
-                            <span>
-                              {formatTime(item.progress)} / {formatTime(item.duration)}
-                            </span>
-                          ) : null}
                         </div>
                       </CardContent>
                     </div>
