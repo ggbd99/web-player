@@ -719,11 +719,13 @@ export default function App() {
                               )}
                             </CardContent>
                           </Card>
+                          </div>
+                          {/* End of Description Section */}
                         </div>
 
-            {/* Right: Episode List (TV only) */}
+            {/* Right: Episode List (TV only) - Show after video on mobile, on right on desktop */}
             {selectedMedia.media_type === 'tv' && (
-              <div className="lg:col-span-1">
+              <div className="lg:col-span-1 order-2 lg:order-none">
                 <Card className="bg-white/5 backdrop-blur-xl border-white/10">
                   <CardContent className="p-6">
                     <div className="flex items-center gap-2 mb-4">
