@@ -7,7 +7,7 @@ import requests
 import time
 import json
 
-BASE_URL = "https://mediawatchdog.preview.emergentagent.com"
+BASE_URL = "https://adaptive-tv-layout.preview.emergentagent.com"
 API_BASE = f"{BASE_URL}/api"
 
 def test_caching_detailed():
