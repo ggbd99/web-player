@@ -225,11 +225,14 @@ export default function App() {
     setLastPlayerState(null)
     setPlayerKey(prev => prev + 1)
     
-    // Load fresh data for new media
+    // Load fresh data for new media (both movies and TV shows)
     if (type === 'tv') {
       loadMediaDetails(media).then(() => {
         loadSeasonEpisodes(media.id, season)
       })
+    } else {
+      // Load full movie details with cast, similar titles, etc.
+      loadMediaDetails(media)
     }
     
     setView('watch')
