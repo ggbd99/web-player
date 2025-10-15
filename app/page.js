@@ -62,26 +62,25 @@ export default function App() {
             time: new Date().toLocaleTimeString()
           }, ...prev.slice(0, 9)])
 
-          // Detect episode/season change
-          if (lastPlayerState) {
+          // Detect episode/season change from PLAYER
+          if (lastPlayerState && selectedMedia?.media_type === 'tv') {
             const seasonChanged = eventData.season && eventData.season !== lastPlayerState.season
             const episodeChanged = eventData.episode && eventData.episode !== lastPlayerState.episode
             
             if (seasonChanged || episodeChanged) {
-              console.log('🔄 Episode/Season changed in player!', {
+              console.log('🔄 Episode/Season changed in PLAYER!', {
                 from: `S${lastPlayerState.season}E${lastPlayerState.episode}`,
                 to: `S${eventData.season}E${eventData.episode}`
               })
               
-              // Update app state
+              // Update app state to match player
               setCurrentSeason(eventData.season)
               setCurrentEpisode(eventData.episode)
               
-              // Update URL
-              const newUrl = new URL(window.location)
-              newUrl.searchParams.set('s', eventData.season)
-              newUrl.searchParams.set('e', eventData.episode)
-              window.history.pushState({}, '', newUrl)
+              // Load new season episodes if season changed
+              if (seasonChanged) {
+                loadSeasonEpisodes(selectedMedia.id, eventData.season)
+              }
             }
           }
 
@@ -105,7 +104,7 @@ export default function App() {
 
     window.addEventListener('message', handlePlayerMessage)
     return () => window.removeEventListener('message', handlePlayerMessage)
-  }, [lastPlayerState])
+  }, [lastPlayerState, selectedMedia])
 
   function saveToHistory(eventData) {
     if (!selectedMedia) return
