@@ -483,25 +483,105 @@ export default function App() {
         {/* Player and Controls Layout */}
         <div className="container mx-auto px-4 py-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left: Player and Description */}
-                        <div className="lg:col-span-2 space-y-4 flex flex-col">
-                          {/* Video Player - Always First */}
-                          <div className="order-1">
-                            <div className="aspect-video bg-black rounded-lg overflow-hidden">
-                              <iframe
-                                key={playerKey}
-                                ref={iframeRef}
-                                src={getPlayerUrl()}
-                                className="w-full h-full"
-                                frameBorder="0"
-                                allowFullScreen
-                                allow="autoplay; encrypted-media"
-                              />
-                            </div>
-                          </div>
-            
-                          {/* Description Section - Show after episodes on mobile, normal on desktop */}
-                          <div className="order-3 lg:order-none space-y-4">
+            {/* Video Player - Always First */}
+            <div className="lg:col-span-2 order-1">
+              <div className="aspect-video bg-black rounded-lg overflow-hidden">
+                <iframe
+                  key={playerKey}
+                  ref={iframeRef}
+                  src={getPlayerUrl()}
+                  className="w-full h-full"
+                  frameBorder="0"
+                  allowFullScreen
+                  allow="autoplay; encrypted-media"
+                />
+              </div>
+            </div>
+
+            {/* Episode List (TV only) - Second on mobile, right sidebar on desktop */}
+            {selectedMedia.media_type === 'tv' && (
+              <div className="lg:col-span-1 order-2">
+                <Card className="bg-white/5 backdrop-blur-xl border-white/10">
+                  <CardContent className="p-6">
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                        <Tv className="w-4 h-4" />
+                      </div>
+                      <h3 className="text-lg font-bold">Episodes</h3>
+                    </div>
+                    
+                    <Select value={String(currentSeason)} onValueChange={(val) => changeSeason(Number(val))}>
+                      <SelectTrigger className="mb-4 bg-white/5 border-white/10 rounded-xl h-11">
+                        <SelectValue placeholder="Select season" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {seasons.map(season => (
+                          <SelectItem key={season.season_number} value={String(season.season_number)}>
+                            Season {season.season_number}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    <ScrollArea className="h-[600px] pr-4">
+                      <div className="space-y-3">
+                        {episodes.map(episode => (
+                          <Card 
+                            key={episode.episode_number}
+                            className={`cursor-pointer hover:scale-[1.02] transition-all duration-200 ${
+                              episode.episode_number === currentEpisode 
+                                ? 'ring-2 ring-red-500 bg-gradient-to-br from-red-500/20 to-pink-500/10' 
+                                : 'bg-white/5 hover:bg-white/10'
+                            } border-white/10 backdrop-blur`}
+                            onClick={() => changeEpisode(currentSeason, episode.episode_number)}
+                          >
+                            <CardContent className="p-3">
+                              <div className="flex gap-3">
+                                <div className="w-28 aspect-video bg-gradient-to-br from-primary/20 to-primary/5 rounded-lg overflow-hidden flex-shrink-0 relative">
+                                  {episode.still_path ? (
+                                    <img 
+                                      src={`https://image.tmdb.org/t/p/w300${episode.still_path}`}
+                                      alt={episode.name}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center">
+                                      <Tv className="w-6 h-6 text-muted-foreground" />
+                                    </div>
+                                  )}
+                                  {episode.episode_number === currentEpisode && (
+                                    <div className="absolute inset-0 flex items-center justify-center bg-black/60">
+                                      <Play className="w-6 h-6 text-red-500" fill="currentColor" />
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-start gap-2 mb-1">
+                                    <span className="font-bold text-sm text-red-400 mt-0.5">{episode.episode_number}.</span>
+                                    <div className="flex-1">
+                                      <h4 className="font-semibold text-sm line-clamp-1">{episode.name}</h4>
+                                      <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{episode.overview || 'No description available'}</p>
+                                    </div>
+                                  </div>
+                                  {episode.episode_number === currentEpisode && (
+                                    <Badge className="mt-2 bg-gradient-to-r from-red-600 to-pink-600 border-0 text-xs">
+                                      Now Playing
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* Description Section - Third on mobile, left column on desktop */}
+            <div className="lg:col-span-2 order-3 space-y-4">
                           {/* Media Info Cards */}
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                             <Card className="bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border-yellow-500/20">
