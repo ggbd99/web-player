@@ -487,16 +487,17 @@ export default function App() {
                         <div className="lg:col-span-2 space-y-4 flex flex-col">
                           {/* Video Player - Always First */}
                           <div className="order-1">
-                          <div className="aspect-video bg-black rounded-lg overflow-hidden">
-                            <iframe
-                              key={playerKey}
-                              ref={iframeRef}
-                              src={getPlayerUrl()}
-                              className="w-full h-full"
-                              frameBorder="0"
-                              allowFullScreen
-                              allow="autoplay; encrypted-media"
-                            />
+                            <div className="aspect-video bg-black rounded-lg overflow-hidden">
+                              <iframe
+                                key={playerKey}
+                                ref={iframeRef}
+                                src={getPlayerUrl()}
+                                className="w-full h-full"
+                                frameBorder="0"
+                                allowFullScreen
+                                allow="autoplay; encrypted-media"
+                              />
+                            </div>
                           </div>
             
                           {/* Media Info Cards */}
