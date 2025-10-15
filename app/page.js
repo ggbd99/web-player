@@ -490,8 +490,8 @@ export default function App() {
         <div className="container mx-auto px-4 py-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Left: Player */}
-                        <div className="lg:col-span-2">
-                          <div className="aspect-video bg-black rounded-lg overflow-hidden mb-4">
+                        <div className="lg:col-span-2 space-y-4">
+                          <div className="aspect-video bg-black rounded-lg overflow-hidden">
                             <iframe
                               key={playerKey}
                               ref={iframeRef}
@@ -503,72 +503,123 @@ export default function App() {
                             />
                           </div>
             
+                          {/* Media Info Cards */}
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <Card className="bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border-yellow-500/20">
+                              <CardContent className="p-4 text-center">
+                                <Star className="w-6 h-6 fill-yellow-500 text-yellow-500 mx-auto mb-2" />
+                                <p className="text-2xl font-bold">{selectedMedia.vote_average?.toFixed(1)}</p>
+                                <p className="text-xs text-muted-foreground">Rating</p>
+                              </CardContent>
+                            </Card>
+                            
+                            {selectedMedia.media_type === 'movie' && selectedMedia.runtime && (
+                              <Card className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border-blue-500/20">
+                                <CardContent className="p-4 text-center">
+                                  <Clock className="w-6 h-6 text-blue-400 mx-auto mb-2" />
+                                  <p className="text-2xl font-bold">{formatRuntime(selectedMedia.runtime)}</p>
+                                  <p className="text-xs text-muted-foreground">Runtime</p>
+                                </CardContent>
+                              </Card>
+                            )}
+                            
+                            {selectedMedia.media_type === 'tv' && selectedMedia.number_of_seasons && (
+                              <Card className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border-purple-500/20">
+                                <CardContent className="p-4 text-center">
+                                  <Tv className="w-6 h-6 text-purple-400 mx-auto mb-2" />
+                                  <p className="text-2xl font-bold">{selectedMedia.number_of_seasons}</p>
+                                  <p className="text-xs text-muted-foreground">Seasons</p>
+                                </CardContent>
+                              </Card>
+                            )}
+                            
+                            {selectedMedia.media_type === 'tv' && selectedMedia.number_of_episodes && (
+                              <Card className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 border-green-500/20">
+                                <CardContent className="p-4 text-center">
+                                  <Film className="w-6 h-6 text-green-400 mx-auto mb-2" />
+                                  <p className="text-2xl font-bold">{selectedMedia.number_of_episodes}</p>
+                                  <p className="text-xs text-muted-foreground">Episodes</p>
+                                </CardContent>
+                              </Card>
+                            )}
+                            
+                            {(selectedMedia.release_date || selectedMedia.first_air_date) && (
+                              <Card className="bg-gradient-to-br from-red-500/10 to-pink-500/10 border-red-500/20">
+                                <CardContent className="p-4 text-center">
+                                  <Clock className="w-6 h-6 text-red-400 mx-auto mb-2" />
+                                  <p className="text-2xl font-bold">
+                                    {selectedMedia.release_date?.split('-')[0] || selectedMedia.first_air_date?.split('-')[0]}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">Year</p>
+                                </CardContent>
+                              </Card>
+                            )}
+                          </div>
+
+                          {/* Tagline */}
+                          {selectedMedia.tagline && (
+                            <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
+                              <CardContent className="p-4">
+                                <p className="text-lg italic text-center font-medium">"{selectedMedia.tagline}"</p>
+                              </CardContent>
+                            </Card>
+                          )}
+            
                           {/* Media Description */}
-                          <Card>
-                            <CardContent className="p-4">
-                              <h3 className="font-semibold mb-2 flex items-center gap-2">
-                                <Info className="w-5 h-5" />
-                                Description
+                          <Card className="bg-white/5 backdrop-blur-xl border-white/10">
+                            <CardContent className="p-6">
+                              <h3 className="text-xl font-bold mb-3 flex items-center gap-2">
+                                <Info className="w-6 h-6 text-primary" />
+                                Overview
                               </h3>
-                              <p className="text-muted-foreground text-sm">
-                                {selectedMedia.overview}
+                              <p className="text-muted-foreground leading-relaxed">
+                                {selectedMedia.overview || 'No description available for this title.'}
                               </p>
+                              
+                              {/* Genres */}
+                              {selectedMedia.genres && selectedMedia.genres.length > 0 && (
+                                <div className="mt-6">
+                                  <h4 className="text-sm font-semibold mb-3 text-muted-foreground">Genres</h4>
+                                  <div className="flex flex-wrap gap-2">
+                                    {selectedMedia.genres.map(genre => (
+                                      <Badge key={genre.id} variant="secondary" className="px-3 py-1">
+                                        {genre.name}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {/* Additional Info */}
+                              <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-white/10">
+                                {selectedMedia.status && (
+                                  <div>
+                                    <p className="text-xs text-muted-foreground mb-1">Status</p>
+                                    <p className="font-semibold">{selectedMedia.status}</p>
+                                  </div>
+                                )}
+                                {selectedMedia.original_language && (
+                                  <div>
+                                    <p className="text-xs text-muted-foreground mb-1">Original Language</p>
+                                    <p className="font-semibold uppercase">{selectedMedia.original_language}</p>
+                                  </div>
+                                )}
+                                {selectedMedia.production_companies && selectedMedia.production_companies.length > 0 && (
+                                  <div className="md:col-span-2">
+                                    <p className="text-xs text-muted-foreground mb-2">Production Companies</p>
+                                    <div className="flex flex-wrap gap-2">
+                                      {selectedMedia.production_companies.slice(0, 5).map(company => (
+                                        <Badge key={company.id} variant="outline" className="text-xs">
+                                          {company.name}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
                             </CardContent>
                           </Card>
-            
-                                        {/* Media Info */}
-                                        <div className="mt-4">
-                                          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-sm">
-                                            <div className="flex items-center gap-2">
-                                              <Star className="w-5 h-5 fill-yellow-500 text-yellow-500 flex-shrink-0" />
-                                              <span className="font-semibold text-base">{selectedMedia.vote_average?.toFixed(1)}</span>
-                                              <span className="text-muted-foreground">/ 10</span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                              <Info className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-                                              <span className="font-semibold">{selectedMedia.status}</span>
-                                            </div>
-                                            {selectedMedia.media_type === 'tv' && selectedMedia.number_of_seasons && (
-                                              <div className="flex items-center gap-2">
-                                                <Tv className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-                                                <span className="font-semibold">{selectedMedia.number_of_seasons} Seasons</span>
-                                              </div>
-                                            )}
-                                            {selectedMedia.media_type === 'tv' && selectedMedia.number_of_episodes && (
-                                              <div className="flex items-center gap-2">
-                                                <Film className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-                                                <span className="font-semibold">{selectedMedia.number_of_episodes} Episodes</span>
-                                              </div>
-                                            )}
-                                                              {(selectedMedia.release_date || selectedMedia.first_air_date) && (
-                                                                <div className="flex items-center gap-2">
-                                                                  <Clock className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-                                                                  <span className="font-semibold">
-                                                                    {selectedMedia.release_date?.split('-')[0] || selectedMedia.first_air_date?.split('-')[0]}
-                                                                  </span>
-                                                                </div>
-                                                              )}
-                                                              {selectedMedia.media_type === 'movie' && selectedMedia.runtime && (
-                                                                <div className="flex items-center gap-2">
-                                                                  <Clock className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-                                                                  <span className="font-semibold">{formatRuntime(selectedMedia.runtime)}</span>
-                                                                </div>
-                                                              )}                                          </div>
-                          
-                                          {selectedMedia.tagline && (
-                                            <p className="text-lg italic text-muted-foreground mt-4 border-l-4 border-primary pl-4">
-                                              {selectedMedia.tagline}
-                                            </p>
-                                          )}
-                          
-                                          {selectedMedia.genres && (
-                                            <div className="flex flex-wrap gap-2 mt-4">
-                                              {selectedMedia.genres.map(genre => (
-                                                <Badge key={genre.id} variant="secondary">{genre.name}</Badge>
-                                              ))}
-                                            </div>
-                                          )}
-                                        </div>                        </div>
+                        </div>
 
             {/* Right: Episode List (TV only) */}
             {selectedMedia.media_type === 'tv' && (
