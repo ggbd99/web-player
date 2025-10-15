@@ -518,15 +518,16 @@ export default function App() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Video Player - Always First */}
             <div className="lg:col-span-2 order-1">
-              <div className="aspect-video bg-black rounded-lg overflow-hidden">
+              <div className="aspect-video bg-black rounded-lg overflow-hidden relative">
                 <iframe
                   key={playerKey}
                   ref={iframeRef}
                   src={getPlayerUrl()}
-                  className="w-full h-full"
+                  className="w-full h-full absolute top-0 left-0"
                   frameBorder="0"
                   allowFullScreen
-                  allow="autoplay; encrypted-media"
+                  allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+                  style={{ border: 'none' }}
                 />
               </div>
             </div>
