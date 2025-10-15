@@ -500,6 +500,8 @@ export default function App() {
                             </div>
                           </div>
             
+                          {/* Description Section - Show after episodes on mobile, normal on desktop */}
+                          <div className="order-3 lg:order-none space-y-4">
                           {/* Media Info Cards */}
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                             <Card className="bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border-yellow-500/20">
