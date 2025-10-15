@@ -49,19 +49,15 @@ export default function App() {
 
   // Handle the infinite loop transition
   useEffect(() => {
-    // When the slider reaches the cloned slide (the one after the last real slide)
     if (heroIndex === HERO_SLIDE_COUNT) {
-      // Wait for the transition animation to finish
       const timer = setTimeout(() => {
-        setHeroTransition(false); // Disable transitions
-        setHeroIndex(0); // Instantly jump back to the first slide
-      }, 700); // This duration MUST match the CSS transition duration
+        setHeroTransition(false);
+        setHeroIndex(0);
+      }, 700);
       return () => clearTimeout(timer);
     }
 
-    // After the jump, we need to re-enable the transition for the next slide animation
     if (heroIndex === 0 && !heroTransition) {
-      // Use a small timeout to ensure the DOM has updated before re-enabling the transition
       const timer = setTimeout(() => {
         setHeroTransition(true);
       }, 50);
@@ -699,7 +695,6 @@ export default function App() {
     )
   }
 
-  // --- START: MODIFIED HERO JSX ---
   // Prepare hero slides for infinite loop
   const heroSlides = trending.slice(0, HERO_SLIDE_COUNT);
   const heroDetailsForSlides = heroDetails.slice(0, HERO_SLIDE_COUNT);
@@ -753,9 +748,9 @@ export default function App() {
                           style={{ filter: 'drop-shadow(0 4px 30px rgba(0,0,0,0.9))' }}
                         />
                       ) : (
-                        <h1 className="text-6xl md:text-7xl font-black text-white leading-tight tracking-tight drop-shadow-2xl">
-                          {item.title || item.name}
-                        </h1>
+                        <div className="h-[80px] md:h-[100px] w-auto bg-zinc-800/50 rounded-md flex items-center justify-center">
+                          <span className="text-zinc-500 text-sm font-semibold">No logo available</span>
+                        </div>
                       )}
 
                       <div className="flex items-center gap-4 text-base">
@@ -812,7 +807,6 @@ export default function App() {
           </div>
         </div>
       )}
-      {/* --- END: MODIFIED HERO JSX --- */}
 
       <header className="fixed top-0 left-0 right-0 z-40 bg-gradient-to-b from-black/70 to-transparent">
         <div className="container mx-auto px-4 py-4">
