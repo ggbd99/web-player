@@ -29,6 +29,7 @@ export default function App() {
   const [lastPlayerState, setLastPlayerState] = useState(null)
   const [playerKey, setPlayerKey] = useState(0)
   const [heroIndex, setHeroIndex] = useState(0)
+  const [heroDetails, setHeroDetails] = useState([])
   const iframeRef = useRef(null)
 
   // Load from localStorage
@@ -152,7 +153,21 @@ export default function App() {
     if (activeTab === 'home') {
       fetch('/api/tmdb/trending?type=all&time=week')
         .then(res => res.json())
-        .then(data => setTrending(data.results || []))
+        .then(data => {
+          const results = data.results || []
+          setTrending(results)
+          
+          // Fetch detailed data for top 5 hero items to get logos
+          const heroPromises = results.slice(0, 5).map(item => 
+            fetch(`/api/tmdb/${item.media_type}/${item.id}?append_to_response=images`)
+              .then(res => res.json())
+              .catch(() => item)
+          )
+          
+          Promise.all(heroPromises).then(detailedItems => {
+            setHeroDetails(detailedItems)
+          })
+        })
       
       fetch('/api/tmdb/popular/movies')
         .then(res => res.json())
@@ -299,6 +314,7 @@ export default function App() {
 
   function MediaCard({ media, onClick }) {
     const isBookmarked = bookmarks.some(b => b.id === media.id)
+    const isTopTen = media.topTenNumber !== undefined
     
     // Check if this media is in watch history
     const historyItem = watchHistory.find(item => {
@@ -315,15 +331,26 @@ export default function App() {
 
     return (
       <div 
-        className="cursor-pointer group flex-shrink-0 w-[150px] sm:w-[180px] md:w-[200px]"
+        className={`cursor-pointer group flex-shrink-0 ${isTopTen ? 'w-[180px] sm:w-[220px] md:w-[240px]' : 'w-[150px] sm:w-[180px] md:w-[200px]'}`}
         onClick={() => onClick(media)}
       >
         <div className="relative aspect-[2/3] overflow-hidden rounded bg-zinc-900 mb-2">
+          {/* Top 10 Number Overlay */}
+          {isTopTen && (
+            <div className="absolute bottom-0 left-0 z-20 text-[140px] sm:text-[160px] font-black leading-none text-white/10 select-none pointer-events-none" style={{
+              WebkitTextStroke: '3px rgba(255,255,255,0.4)',
+              textShadow: '0 0 30px rgba(0,0,0,0.9)',
+              fontFamily: 'system-ui, -apple-system, sans-serif'
+            }}>
+              {media.topTenNumber}
+            </div>
+          )}
+          
           {media.poster_path ? (
             <img 
-              src={`https://image.tmdb.org/t/p/w342${media.poster_path}`}
+              src={`https://image.tmdb.org/t/p/w500${media.poster_path}`}
               alt={media.title || media.name}
-              className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
             />
           ) : (
             <div className="w-full h-full bg-zinc-800 flex items-center justify-center">
@@ -331,11 +358,16 @@ export default function App() {
             </div>
           )}
 
+          {/* Gradient overlay for Top 10 number visibility */}
+          {isTopTen && (
+            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent z-10" />
+          )}
+
           {/* Progress bar */}
           {hasProgress && (
-            <div className="absolute bottom-0 left-0 right-0 h-1 bg-zinc-800">
+            <div className="absolute bottom-0 left-0 right-0 h-1 bg-zinc-800 z-30">
               <div 
-                className="h-full bg-red-600"
+                className="h-full bg-indigo-600"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
@@ -343,8 +375,10 @@ export default function App() {
         </div>
         
         <div className="space-y-0.5">
-          <h3 className="font-medium text-sm text-white truncate">{media.title || media.name}</h3>
-          <div className="flex items-center gap-2 text-xs text-zinc-500">
+          <h3 className={`font-medium text-white truncate ${isTopTen ? 'text-base' : 'text-sm'}`}>
+            {media.title || media.name}
+          </h3>
+          <div className={`flex items-center gap-2 text-zinc-500 ${isTopTen ? 'text-sm' : 'text-xs'}`}>
             <span>{media.vote_average?.toFixed(1)}/10</span>
             {(media.release_date || media.first_air_date) && (
               <span>{(media.release_date || media.first_air_date).split('-')[0]}</span>
@@ -355,46 +389,52 @@ export default function App() {
     )
   }
 
-  function ScrollableRow({ title, items, onItemClick }) {
+  function ScrollableRow({ title, items, onItemClick, isTopTen = false }) {
     const scrollContainerRef = useRef(null)
 
     const scroll = (direction) => {
       if (scrollContainerRef.current) {
-        const scrollAmount = direction === 'left' ? -800 : 800
+        const scrollAmount = direction === 'left' ? -900 : 900
         scrollContainerRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' })
       }
     }
 
     return (
-      <div className="space-y-4">
-        <h2 className="text-2xl font-bold px-4">
-          <span className="text-red-600">|</span> {title}
+      <div className="space-y-5 py-4">
+        <h2 className={`font-bold px-8 ${isTopTen ? 'text-3xl tracking-tight' : 'text-2xl'}`}>
+          <span className="text-indigo-500 font-black">|</span> {title}
         </h2>
         <div className="relative group/row">
-          {/* Left Arrow */}
+          {/* Left Arrow - Full Height */}
           <button
             onClick={() => scroll('left')}
-            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-black/80 hover:bg-black p-3 rounded-r opacity-0 group-hover/row:opacity-100 transition-opacity"
+            className="absolute left-0 top-0 bottom-0 z-20 bg-gradient-to-r from-black via-black/95 to-transparent hover:from-black hover:via-black w-16 flex items-center justify-start pl-2 opacity-0 group-hover/row:opacity-100 transition-all duration-300"
+            aria-label="Scroll left"
           >
-            <ChevronLeft className="w-6 h-6" />
+            <div className="bg-black/60 hover:bg-black/90 border border-zinc-700 hover:border-indigo-500 p-2 rounded-full transition-all hover:scale-110">
+              <ChevronLeft className="w-8 h-8" />
+            </div>
           </button>
 
           {/* Scrollable Content */}
           <div 
             ref={scrollContainerRef}
-            className="flex gap-4 overflow-x-auto scrollbar-hide px-4 pb-2"
+            className={`flex overflow-x-auto scrollbar-hide px-8 pb-4 ${isTopTen ? 'gap-6' : 'gap-5'}`}
           >
             {items.map(item => (
               <MediaCard key={item.id} media={item} onClick={onItemClick} />
             ))}
           </div>
 
-          {/* Right Arrow */}
+          {/* Right Arrow - Full Height */}
           <button
             onClick={() => scroll('right')}
-            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-black/80 hover:bg-black p-3 rounded-l opacity-0 group-hover/row:opacity-100 transition-opacity"
+            className="absolute right-0 top-0 bottom-0 z-20 bg-gradient-to-l from-black via-black/95 to-transparent hover:from-black hover:via-black w-16 flex items-center justify-end pr-2 opacity-0 group-hover/row:opacity-100 transition-all duration-300"
+            aria-label="Scroll right"
           >
-            <ChevronRight className="w-6 h-6" />
+            <div className="bg-black/60 hover:bg-black/90 border border-zinc-700 hover:border-indigo-500 p-2 rounded-full transition-all hover:scale-110">
+              <ChevronRight className="w-8 h-8" />
+            </div>
           </button>
         </div>
       </div>
@@ -739,7 +779,7 @@ export default function App() {
                             onClick={() => changeEpisode(episode.episode_number)}
                             className={`p-3 rounded-lg cursor-pointer transition-colors ${
                               episode.episode_number === currentEpisode 
-                                ? 'bg-red-600/20 border border-red-600/50' 
+                                ? 'bg-indigo-600/20 border border-indigo-600/50' 
                                 : 'hover:bg-zinc-800'
                             }`}
                           >
@@ -790,7 +830,7 @@ export default function App() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center gap-6">
             {/* Logo */}
-            <h1 className="text-2xl font-bold text-red-600">VidKing</h1>
+            <h1 className="text-2xl font-bold text-indigo-500">VidKing</h1>
             
             {/* Search */}
             <div className="flex-1 max-w-2xl">
@@ -812,37 +852,37 @@ export default function App() {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
+      <main className="container mx-auto py-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-10">
           {/* Tab List */}
           <TabsList className="bg-transparent border-b border-zinc-800 rounded-none p-0 h-auto">
             <TabsTrigger 
               value="home" 
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-red-600 data-[state=active]:bg-transparent px-6 py-3"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:bg-transparent px-6 py-3"
             >
               Home
             </TabsTrigger>
             <TabsTrigger 
               value="movies" 
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-red-600 data-[state=active]:bg-transparent px-6 py-3"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:bg-transparent px-6 py-3"
             >
               Movies
             </TabsTrigger>
             <TabsTrigger 
               value="tv" 
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-red-600 data-[state=active]:bg-transparent px-6 py-3"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:bg-transparent px-6 py-3"
             >
               TV Shows
             </TabsTrigger>
             <TabsTrigger 
               value="history" 
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-red-600 data-[state=active]:bg-transparent px-6 py-3"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:bg-transparent px-6 py-3"
             >
               Continue Watching
             </TabsTrigger>
             <TabsTrigger 
               value="bookmarks" 
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-red-600 data-[state=active]:bg-transparent px-6 py-3"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:bg-transparent px-6 py-3"
             >
               My List
             </TabsTrigger>
@@ -852,7 +892,7 @@ export default function App() {
           {searchResults.length > 0 && (
             <div className="space-y-4">
               <h2 className="text-2xl font-bold">
-                <span className="text-red-600">|</span> Search Results
+                <span className="text-indigo-500">|</span> Search Results
               </h2>
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-4">
                 {searchResults.map(media => (
@@ -863,21 +903,24 @@ export default function App() {
           )}
 
           {/* Home Tab */}
-          <TabsContent value="home" className="space-y-8 mt-0">
-            {/* Hero Carousel */}
+          <TabsContent value="home" className="space-y-12 mt-0">
+            {/* Hero Carousel - Full Width */}
             {trending.length > 0 && (
-              <div className="relative h-[70vh] -mx-4 -mt-8">
+              <div className="relative h-screen -mx-4 sm:-mx-6 lg:-mx-8 -mt-6">
                 {/* Carousel Items */}
                 <div className="relative w-full h-full overflow-hidden">
-                  {trending.slice(0, 5).map((item, index) => (
+                  {trending.slice(0, 5).map((item, index) => {
+                    const detailedItem = heroDetails[index] || item
+                    const logoPath = detailedItem.images?.logos?.[0]?.file_path || 
+                                   detailedItem.belongs_to_collection?.logo_path
+                    
+                    return (
                     <div
                       key={item.id}
-                      className={`absolute inset-0 transition-all duration-700 ${
+                      className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
                         index === heroIndex 
-                          ? 'translate-x-0 opacity-100' 
-                          : index < heroIndex 
-                            ? '-translate-x-full opacity-0' 
-                            : 'translate-x-full opacity-0'
+                          ? 'opacity-100 z-10' 
+                          : 'opacity-0 z-0'
                       }`}
                     >
                       {/* Backdrop Image */}
@@ -889,8 +932,9 @@ export default function App() {
                               alt={item.title || item.name}
                               className="w-full h-full object-cover"
                             />
-                            <div className="absolute inset-0 bg-gradient-to-r from-black via-black/80 to-transparent" />
-                            <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-transparent to-transparent" />
+                            <div className="absolute inset-0 bg-gradient-to-r from-black via-black/70 to-transparent" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-black/50 to-transparent" />
+                            <div className="absolute inset-0 bg-black/20" />
                           </>
                         ) : (
                           <div className="w-full h-full bg-zinc-900" />
@@ -898,120 +942,94 @@ export default function App() {
                       </div>
 
                       {/* Content */}
-                      <div className="relative container mx-auto px-4 h-full flex items-center">
-                        <div className="max-w-2xl space-y-4">
-                          <h1 className="text-5xl md:text-6xl font-bold text-white leading-tight">
-                            {item.title || item.name}
-                          </h1>
+                      <div className="relative container mx-auto px-8 h-full flex items-center">
+                        <div className="max-w-3xl space-y-6">
+                          {/* Logo or Title */}
+                          {logoPath ? (
+                            <img 
+                              src={`https://image.tmdb.org/t/p/original${logoPath}`}
+                              alt={item.title || item.name}
+                              className="max-h-[100px] md:max-h-[140px] w-auto object-contain"
+                              style={{ filter: 'drop-shadow(0 4px 20px rgba(0,0,0,0.8))' }}
+                            />
+                          ) : (
+                            <h1 className="text-6xl md:text-7xl font-black text-white leading-tight tracking-tight">
+                              {item.title || item.name}
+                            </h1>
+                          )}
 
-                          <div className="flex items-center gap-4 text-sm">
-                            <div className="flex items-center gap-1">
-                              <Star className="w-4 h-4 fill-yellow-500 text-yellow-500" />
-                              <span className="text-white font-semibold">{item.vote_average?.toFixed(1)}</span>
+                          <div className="flex items-center gap-4 text-base">
+                            <div className="flex items-center gap-2 bg-indigo-600 px-3 py-1.5 rounded-md">
+                              <Star className="w-5 h-5 fill-white text-white" />
+                              <span className="text-white font-bold">{item.vote_average?.toFixed(1)}</span>
                             </div>
-                            <span className="text-zinc-300">
+                            <span className="text-zinc-200 font-medium">
                               {(item.release_date || item.first_air_date)?.split('-')[0]}
                             </span>
-                            <span className="px-2 py-0.5 bg-red-600 text-white text-xs font-semibold rounded">
-                              {item.media_type === 'tv' ? 'TV' : 'MOVIE'}
+                            <span className="px-3 py-1.5 bg-zinc-900/80 backdrop-blur-sm text-white text-sm font-bold rounded-md border border-zinc-700">
+                              {item.media_type === 'tv' ? 'TV SERIES' : 'MOVIE'}
                             </span>
                           </div>
 
-                          <p className="text-zinc-300 text-lg line-clamp-3 leading-relaxed">
+                          <p className="text-zinc-200 text-xl line-clamp-3 leading-relaxed max-w-2xl">
                             {item.overview}
                           </p>
 
-                          <div className="flex items-center gap-3 pt-2">
+                          <div className="flex items-center gap-4 pt-4">
                             <Button 
                               size="lg" 
-                              className="bg-white text-black hover:bg-zinc-200 font-semibold px-8"
+                              className="bg-white text-black hover:bg-zinc-200 font-bold px-10 py-6 text-lg rounded-md shadow-lg transition-all hover:scale-105"
                               onClick={() => startWatching(item)}
                             >
-                              <Play className="w-5 h-5 mr-2" fill="currentColor" />
-                              Play
+                              <Play className="w-6 h-6 mr-2" fill="currentColor" />
+                              Play Now
                             </Button>
                             <Button 
                               size="lg" 
                               variant="outline" 
-                              className="border-zinc-600 bg-zinc-900/80 hover:bg-zinc-800 text-white font-semibold px-8"
+                              className="border-2 border-zinc-600 bg-zinc-900/60 backdrop-blur-sm hover:bg-zinc-800 hover:border-zinc-500 text-white font-bold px-10 py-6 text-lg rounded-md transition-all hover:scale-105"
                               onClick={() => startWatching(item)}
                             >
-                              <Info className="w-5 h-5 mr-2" />
-                              See More
+                              <Info className="w-6 h-6 mr-2" />
+                              More Info
                             </Button>
                           </div>
                         </div>
                       </div>
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
 
                 {/* Carousel Indicators */}
-                <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+                <div className="absolute bottom-12 left-1/2 -translate-x-1/2 flex gap-3 z-20">
                   {trending.slice(0, 5).map((_, index) => (
                     <button
                       key={index}
                       onClick={() => setHeroIndex(index)}
-                      className={`h-1 rounded-full transition-all ${
-                        index === heroIndex ? 'bg-white w-8' : 'bg-white/50 w-6'
+                      className={`h-1.5 rounded-full transition-all duration-300 hover:bg-white ${
+                        index === heroIndex 
+                          ? 'bg-white w-12 shadow-lg shadow-white/50' 
+                          : 'bg-white/40 w-8 hover:w-10'
                       }`}
+                      aria-label={`Go to slide ${index + 1}`}
                     />
                   ))}
                 </div>
               </div>
             )}
 
-            {/* TOP 10 CONTENT TODAY - Scrollable */}
+            {/* TOP 10 CONTENT TODAY - Scrollable with Buttons */}
             {trending.length > 0 && (
-              <div className="space-y-4">
-                <h2 className="text-2xl font-bold px-4">
-                  <span className="text-red-600">|</span> TOP 10 CONTENT TODAY
-                </h2>
-                <div className="relative group/row">
-                  <div className="flex gap-4 overflow-x-auto scrollbar-hide px-4 pb-2">
-                    {trending.slice(0, 10).map((media, index) => (
-                      <div 
-                        key={media.id}
-                        className="cursor-pointer group flex-shrink-0 w-[150px] sm:w-[180px]"
-                        onClick={() => startWatching(media)}
-                      >
-                        <div className="relative aspect-[2/3] overflow-hidden rounded bg-zinc-900 mb-2">
-                          <div className="absolute bottom-0 left-0 z-10 text-[120px] font-black leading-none text-white/20 select-none" style={{
-                            WebkitTextStroke: '2px rgba(255,255,255,0.3)',
-                            textShadow: '0 0 20px rgba(0,0,0,0.8)'
-                          }}>
-                            {index + 1}
-                          </div>
-                          
-                          {media.poster_path ? (
-                            <img 
-                              src={`https://image.tmdb.org/t/p/w342${media.poster_path}`}
-                              alt={media.title || media.name}
-                              className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
-                            />
-                          ) : (
-                            <div className="w-full h-full bg-zinc-800 flex items-center justify-center">
-                              <Film className="w-12 h-12 text-zinc-600" />
-                            </div>
-                          )}
-                          
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-                        </div>
-                        
-                        <div className="space-y-0.5">
-                          <h3 className="font-medium text-sm text-white truncate">{media.title || media.name}</h3>
-                          <div className="flex items-center gap-2 text-xs text-zinc-500">
-                            <span>{media.vote_average?.toFixed(1)}/10</span>
-                            {(media.release_date || media.first_air_date) && (
-                              <span>{(media.release_date || media.first_air_date).split('-')[0]}</span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
+              <ScrollableRow 
+                title="TOP 10 CONTENT TODAY" 
+                items={trending.slice(0, 10).map((media, index) => ({
+                  ...media,
+                  topTenNumber: index + 1
+                }))} 
+                onItemClick={startWatching}
+                isTopTen={true}
+              />
             )}
 
             {/* Scrollable Rows */}
