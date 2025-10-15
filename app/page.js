@@ -318,9 +318,28 @@ export default function App() {
 
   function MediaCard({ media, onClick }) {
     const isBookmarked = bookmarks.some(b => b.id === media.id)
+    
+    // Check if this media is in watch history
+    const historyItem = watchHistory.find(item => {
+      if (media.media_type === 'tv' || media.first_air_date) {
+        return item.id === media.id && item.type === 'tv'
+      }
+      return item.id === media.id && item.type === 'movie'
+    })
+    
+    const hasProgress = historyItem && historyItem.progress && historyItem.duration
+    const progressPercent = hasProgress ? (historyItem.progress / historyItem.duration) * 100 : 0
+    
     return (
       <Card className="group cursor-pointer hover:scale-105 transition-all duration-300 overflow-hidden border-0 bg-card/50 backdrop-blur">
-        <div className="relative aspect-[2/3]" onClick={() => onClick(media)}>
+        <div className="relative aspect-[2/3]" onClick={() => {
+          // Resume from history if available
+          if (historyItem) {
+            onClick(media, historyItem.season || 1, historyItem.episode || 1)
+          } else {
+            onClick(media)
+          }
+        }}>
           {media.poster_path ? (
             <img
               src={`https://image.tmdb.org/t/p/w500${media.poster_path}`}
@@ -332,14 +351,28 @@ export default function App() {
               <Film className="w-12 h-12 text-primary/50" />
             </div>
           )}
+          
+          {/* Progress bar at bottom of poster if watched */}
+          {hasProgress && (
+            <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-black/60">
+              <div 
+                className="h-full bg-gradient-to-r from-red-600 to-pink-600" 
+                style={{ width: `${progressPercent}%` }} 
+              />
+            </div>
+          )}
+          
           <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300">
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
               <div className="w-14 h-14 rounded-full bg-red-600 hover:bg-red-700 flex items-center justify-center shadow-xl transform group-hover:scale-110 transition-transform">
                 <Play className="w-6 h-6 ml-1" fill="white" />
               </div>
-              <p className="text-xs text-white/90 font-medium">Watch Now</p>
+              <p className="text-xs text-white/90 font-medium">
+                {historyItem ? 'Resume' : 'Watch Now'}
+              </p>
             </div>
           </div>
+          
           <Button
             size="icon"
             variant="secondary"
@@ -348,7 +381,18 @@ export default function App() {
           >
             {isBookmarked ? <BookmarkCheck className="w-4 h-4 text-red-500" /> : <Bookmark className="w-4 h-4" />}
           </Button>
-          <div className="absolute bottom-2 left-2 opacity-100">
+          
+          {/* Resume badge if in watch history */}
+          {historyItem && (
+            <div className="absolute top-2 left-2 opacity-100">
+              <Badge className="bg-gradient-to-r from-red-600 to-pink-600 text-white text-xs font-bold border-0 shadow-lg">
+                Resume
+              </Badge>
+            </div>
+          )}
+          
+          {/* Media type badge */}
+          <div className={`absolute ${historyItem ? 'bottom-4' : 'bottom-2'} left-2 opacity-100`}>
             <Badge className="bg-blue-600 text-white text-xs">
               {media.media_type || (media.first_air_date ? 'TV' : 'Movie')}
             </Badge>
@@ -368,6 +412,17 @@ export default function App() {
               <span className="text-xs text-muted-foreground">{media.first_air_date.split('-')[0]}</span>
             )}
           </div>
+          {/* Show watch progress info */}
+          {historyItem && hasProgress && (
+            <div className="mt-2 text-xs text-muted-foreground flex items-center gap-1">
+              <Clock className="w-3 h-3" />
+              {historyItem.type === 'tv' ? (
+                <span>S{historyItem.season} E{historyItem.episode} • {Math.round(progressPercent)}%</span>
+              ) : (
+                <span>{formatTime(historyItem.progress)} / {formatTime(historyItem.duration)}</span>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
     )
