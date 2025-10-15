@@ -483,8 +483,10 @@ export default function App() {
         {/* Player and Controls Layout */}
         <div className="container mx-auto px-4 py-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left: Player */}
-                        <div className="lg:col-span-2 space-y-4">
+            {/* Left: Player and Description */}
+                        <div className="lg:col-span-2 space-y-4 flex flex-col">
+                          {/* Video Player - Always First */}
+                          <div className="order-1">
                           <div className="aspect-video bg-black rounded-lg overflow-hidden">
                             <iframe
                               key={playerKey}
