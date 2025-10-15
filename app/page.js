@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Search, Play, Star, Clock, Bookmark, BookmarkCheck, ArrowLeft, TrendingUp, Film, Tv, Info } from 'lucide-react'
+import { Search, Play, Star, Clock, Bookmark, BookmarkCheck, ArrowLeft, TrendingUp, Film, Tv, Info, X } from 'lucide-react'
 
 export default function App() {
   const [view, setView] = useState('browse') // 'browse' or 'watch'
@@ -270,24 +270,50 @@ export default function App() {
     }
   }
 
+  function removeFromHistory(itemToRemove) {
+    setWatchHistory(prev => prev.filter(item => {
+      if (item.type === 'tv') {
+        return !(item.id === itemToRemove.id && item.season === itemToRemove.season && item.episode === itemToRemove.episode)
+      }
+      return item.id !== itemToRemove.id
+    }))
+  }
+
+  function formatTime(seconds) {
+    if (isNaN(seconds) || seconds < 0) {
+      return '00:00';
+    }
+    const date = new Date(seconds * 1000);
+    const hh = date.getUTCHours();
+    const mm = date.getUTCMinutes();
+    const ss = date.getUTCSeconds().toString().padStart(2, '0');
+    if (hh) {
+      return `${hh}:${mm.toString().padStart(2, '0')}:${ss}`;
+    }
+    return `${mm}:${ss}`;
+  }
+
+  function formatRuntime(minutes) {
+    if (isNaN(minutes) || minutes < 0) {
+      return '';
+    }
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    if (hours > 0) {
+      return `${hours}h ${mins}m`;
+    }
+    return `${mins}m`;
+  }
+
   function getPlayerUrl() {
     if (!selectedMedia) return ''
     const type = selectedMedia.media_type
     const id = selectedMedia.id
-    
-    // Check for resume position
-    const historyItem = watchHistory.find(h => {
-      if (type === 'tv') {
-        return h.id === id && h.season === currentSeason && h.episode === currentEpisode
-      }
-      return h.id === id
-    })
-    const progress = historyItem?.progress || 0
 
     if (type === 'tv') {
-      return `https://www.vidking.net/embed/tv/${id}/${currentSeason}/${currentEpisode}?color=e50914&autoPlay=true&nextEpisode=true&episodeSelector=true&progress=${Math.floor(progress)}`
+      return `https://www.vidking.net/embed/tv/${id}/${currentSeason}/${currentEpisode}`
     }
-    return `https://www.vidking.net/embed/movie/${id}?color=e50914&autoPlay=true&progress=${Math.floor(progress)}`
+    return `https://www.vidking.net/embed/movie/${id}`
   }
 
   function MediaCard({ media, onClick }) {
@@ -322,8 +348,8 @@ export default function App() {
           >
             {isBookmarked ? <BookmarkCheck className="w-4 h-4 text-red-500" /> : <Bookmark className="w-4 h-4" />}
           </Button>
-          <div className="absolute top-2 left-2 opacity-100">
-            <Badge className="bg-black/60 backdrop-blur border-0 text-xs">
+          <div className="absolute bottom-2 left-2 opacity-100">
+            <Badge className="bg-blue-600 text-white text-xs">
               {media.media_type || (media.first_air_date ? 'TV' : 'Movie')}
             </Badge>
           </div>
@@ -395,74 +421,85 @@ export default function App() {
         <div className="container mx-auto px-4 py-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Left: Player */}
-            <div className="lg:col-span-2">
-              <div className="aspect-video bg-black rounded-lg overflow-hidden mb-4">
-                <iframe
-                  key={playerKey}
-                  ref={iframeRef}
-                  src={getPlayerUrl()}
-                  className="w-full h-full"
-                  frameBorder="0"
-                  allowFullScreen
-                  allow="autoplay; encrypted-media"
-                />
-              </div>
-
-              {/* Player Events Debug */}
-              <Card>
-                <CardContent className="p-4">
-                  <h3 className="font-semibold mb-2 flex items-center gap-2">
-                    🎬 Player Events (Real-time Sync)
-                    <Badge variant="outline">S{currentSeason}E{currentEpisode}</Badge>
-                  </h3>
-                  <ScrollArea className="h-24">
-                    <div className="space-y-1 text-xs font-mono">
-                      {playerEvents.length === 0 && (
-                        <p className="text-muted-foreground">Waiting for player events...</p>
-                      )}
-                      {playerEvents.map((event, idx) => (
-                        <div key={idx} className="p-2 bg-muted rounded">
-                          <span className="text-muted-foreground">{event.time}</span>
-                          {' '}
-                          <span className="text-primary font-semibold">{event.event}</span>
-                          {event.season && <span> | S{event.season}E{event.episode}</span>}
-                          {event.currentTime && <span> | {Math.floor(event.currentTime)}s</span>}
-                        </div>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                </CardContent>
-              </Card>
-
-              {/* Media Info */}
-              <div className="mt-4">
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="flex items-center gap-2">
-                    <Star className="w-5 h-5 fill-yellow-500 text-yellow-500" />
-                    <span className="font-semibold">{selectedMedia.vote_average?.toFixed(1)}</span>
-                  </div>
-                  <Badge>{selectedMedia.media_type === 'tv' ? 'TV Series' : 'Movie'}</Badge>
-                  {selectedMedia.release_date && (
-                    <span className="text-sm text-muted-foreground">
-                      {selectedMedia.release_date.split('-')[0]}
-                    </span>
-                  )}
-                  {selectedMedia.first_air_date && (
-                    <span className="text-sm text-muted-foreground">
-                      {selectedMedia.first_air_date.split('-')[0]}
-                    </span>
-                  )}
-                </div>
-                <p className="text-muted-foreground">{selectedMedia.overview}</p>
-                {selectedMedia.genres && (
-                  <div className="flex flex-wrap gap-2 mt-4">
-                    {selectedMedia.genres.map(genre => (
-                      <Badge key={genre.id} variant="secondary">{genre.name}</Badge>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
+                        <div className="lg:col-span-2">
+                          <div className="aspect-video bg-black rounded-lg overflow-hidden mb-4">
+                            <iframe
+                              key={playerKey}
+                              ref={iframeRef}
+                              src={getPlayerUrl()}
+                              className="w-full h-full"
+                              frameBorder="0"
+                              allowFullScreen
+                              allow="autoplay; encrypted-media"
+                            />
+                          </div>
+            
+                          {/* Media Description */}
+                          <Card>
+                            <CardContent className="p-4">
+                              <h3 className="font-semibold mb-2 flex items-center gap-2">
+                                <Info className="w-5 h-5" />
+                                Description
+                              </h3>
+                              <p className="text-muted-foreground text-sm">
+                                {selectedMedia.overview}
+                              </p>
+                            </CardContent>
+                          </Card>
+            
+                                        {/* Media Info */}
+                                        <div className="mt-4">
+                                          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-sm">
+                                            <div className="flex items-center gap-2">
+                                              <Star className="w-5 h-5 fill-yellow-500 text-yellow-500 flex-shrink-0" />
+                                              <span className="font-semibold text-base">{selectedMedia.vote_average?.toFixed(1)}</span>
+                                              <span className="text-muted-foreground">/ 10</span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                              <Info className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+                                              <span className="font-semibold">{selectedMedia.status}</span>
+                                            </div>
+                                            {selectedMedia.media_type === 'tv' && selectedMedia.number_of_seasons && (
+                                              <div className="flex items-center gap-2">
+                                                <Tv className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+                                                <span className="font-semibold">{selectedMedia.number_of_seasons} Seasons</span>
+                                              </div>
+                                            )}
+                                            {selectedMedia.media_type === 'tv' && selectedMedia.number_of_episodes && (
+                                              <div className="flex items-center gap-2">
+                                                <Film className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+                                                <span className="font-semibold">{selectedMedia.number_of_episodes} Episodes</span>
+                                              </div>
+                                            )}
+                                                              {(selectedMedia.release_date || selectedMedia.first_air_date) && (
+                                                                <div className="flex items-center gap-2">
+                                                                  <Clock className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+                                                                  <span className="font-semibold">
+                                                                    {selectedMedia.release_date?.split('-')[0] || selectedMedia.first_air_date?.split('-')[0]}
+                                                                  </span>
+                                                                </div>
+                                                              )}
+                                                              {selectedMedia.media_type === 'movie' && selectedMedia.runtime && (
+                                                                <div className="flex items-center gap-2">
+                                                                  <Clock className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+                                                                  <span className="font-semibold">{formatRuntime(selectedMedia.runtime)}</span>
+                                                                </div>
+                                                              )}                                          </div>
+                          
+                                          {selectedMedia.tagline && (
+                                            <p className="text-lg italic text-muted-foreground mt-4 border-l-4 border-primary pl-4">
+                                              {selectedMedia.tagline}
+                                            </p>
+                                          )}
+                          
+                                          {selectedMedia.genres && (
+                                            <div className="flex flex-wrap gap-2 mt-4">
+                                              {selectedMedia.genres.map(genre => (
+                                                <Badge key={genre.id} variant="secondary">{genre.name}</Badge>
+                                              ))}
+                                            </div>
+                                          )}
+                                        </div>                        </div>
 
             {/* Right: Episode List (TV only) */}
             {selectedMedia.media_type === 'tv' && (
@@ -706,27 +743,46 @@ export default function App() {
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                 {watchHistory.map((item, idx) => (
-                  <Card key={idx} className="group cursor-pointer hover:ring-2 hover:ring-primary transition-all overflow-hidden"
-                    onClick={() => startWatching({ id: item.id, title: item.title, name: item.title, media_type: item.type, poster_path: item.poster }, item.season || 1, item.episode || 1)}>
-                    <div className="relative aspect-[2/3]">
-                      {item.poster ? (
-                        <img src={`https://image.tmdb.org/t/p/w500${item.poster}`} alt={item.title} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full bg-muted flex items-center justify-center"><Film className="w-12 h-12 text-muted-foreground" /></div>
-                      )}
-                      <div className="absolute bottom-0 left-0 right-0 h-1 bg-muted">
-                        <div className="h-full bg-red-600" style={{ width: `${(item.progress / item.duration) * 100}%` }} />
+                  <Card key={idx} className="group relative overflow-hidden">
+                    <div 
+                      className="cursor-pointer"
+                      onClick={() => startWatching({ id: item.id, title: item.title, name: item.title, media_type: item.type, poster_path: item.poster }, item.season || 1, item.episode || 1)}
+                    >
+                      <div className="relative aspect-[2/3]">
+                        {item.poster ? (
+                          <img src={`https://image.tmdb.org/t/p/w500${item.poster}`} alt={item.title} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full bg-muted flex items-center justify-center"><Film className="w-12 h-12 text-muted-foreground" /></div>
+                        )}
+                        <div className="absolute bottom-0 left-0 right-0 h-1 bg-muted">
+                          <div className="h-full bg-red-600" style={{ width: `${(item.progress / item.duration) * 100}%` }} />
+                        </div>
+                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <Button size="icon" className="rounded-full"><Play className="w-6 h-6" /></Button>
+                        </div>
                       </div>
-                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <Button size="icon" className="rounded-full"><Play className="w-6 h-6" /></Button>
-                      </div>
+                      <CardContent className="p-3">
+                        <h3 className="font-semibold truncate text-sm mb-1">{item.title}</h3>
+                        <div className="text-xs text-muted-foreground flex items-center justify-between">
+                          {item.type === 'tv' && (
+                            <span>S{item.season} E{item.episode}</span>
+                          )}
+                          {item.progress && item.duration ? (
+                            <span>
+                              {formatTime(item.progress)} / {formatTime(item.duration)}
+                            </span>
+                          ) : null}
+                        </div>
+                      </CardContent>
                     </div>
-                    <CardContent className="p-3">
-                      <h3 className="font-semibold truncate text-sm">{item.title}</h3>
-                      {item.type === 'tv' && (
-                        <p className="text-xs text-muted-foreground">S{item.season} E{item.episode}</p>
-                      )}
-                    </CardContent>
+                    <Button
+                      size="icon"
+                      variant="secondary"
+                      className="absolute top-2 right-2 w-6 h-6 opacity-100 transition-all duration-300 bg-black/60 hover:bg-black/80 border-0 backdrop-blur z-10"
+                      onClick={(e) => { e.stopPropagation(); removeFromHistory(item) }}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
                   </Card>
                 ))}
               </div>
