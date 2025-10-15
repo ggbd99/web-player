@@ -293,7 +293,7 @@ export default function App() {
   function MediaCard({ media, onClick }) {
     const isBookmarked = bookmarks.some(b => b.id === media.id)
     return (
-      <Card className="group cursor-pointer hover:ring-2 hover:ring-primary transition-all overflow-hidden">
+      <Card className="group cursor-pointer hover:scale-105 transition-all duration-300 overflow-hidden border-0 bg-card/50 backdrop-blur">
         <div className="relative aspect-[2/3]" onClick={() => onClick(media)}>
           {media.poster_path ? (
             <img
@@ -302,32 +302,45 @@ export default function App() {
               className="w-full h-full object-cover"
             />
           ) : (
-            <div className="w-full h-full bg-muted flex items-center justify-center">
-              <Film className="w-12 h-12 text-muted-foreground" />
+            <div className="w-full h-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+              <Film className="w-12 h-12 text-primary/50" />
             </div>
           )}
-          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-            <Button size="icon" className="rounded-full">
-              <Play className="w-6 h-6" />
-            </Button>
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300">
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+              <div className="w-14 h-14 rounded-full bg-red-600 hover:bg-red-700 flex items-center justify-center shadow-xl transform group-hover:scale-110 transition-transform">
+                <Play className="w-6 h-6 ml-1" fill="white" />
+              </div>
+              <p className="text-xs text-white/90 font-medium">Watch Now</p>
+            </div>
           </div>
           <Button
             size="icon"
             variant="secondary"
-            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100"
+            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-all duration-300 bg-black/60 hover:bg-black/80 border-0 backdrop-blur"
             onClick={(e) => { e.stopPropagation(); toggleBookmark(media) }}
           >
-            {isBookmarked ? <BookmarkCheck className="w-4 h-4" /> : <Bookmark className="w-4 h-4" />}
+            {isBookmarked ? <BookmarkCheck className="w-4 h-4 text-red-500" /> : <Bookmark className="w-4 h-4" />}
           </Button>
-        </div>
-        <CardContent className="p-3">
-          <h3 className="font-semibold truncate text-sm">{media.title || media.name}</h3>
-          <div className="flex items-center gap-2 mt-1">
-            <Star className="w-3 h-3 fill-yellow-500 text-yellow-500" />
-            <span className="text-xs text-muted-foreground">{media.vote_average?.toFixed(1)}</span>
-            <Badge variant="secondary" className="text-xs ml-auto">
+          <div className="absolute top-2 left-2 opacity-100">
+            <Badge className="bg-black/60 backdrop-blur border-0 text-xs">
               {media.media_type || (media.first_air_date ? 'TV' : 'Movie')}
             </Badge>
+          </div>
+        </div>
+        <CardContent className="p-3 bg-gradient-to-b from-card to-card/80">
+          <h3 className="font-semibold truncate text-sm mb-1">{media.title || media.name}</h3>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
+              <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+              <span className="text-xs font-medium text-yellow-400">{media.vote_average?.toFixed(1)}</span>
+            </div>
+            {media.release_date && (
+              <span className="text-xs text-muted-foreground">{media.release_date.split('-')[0]}</span>
+            )}
+            {media.first_air_date && (
+              <span className="text-xs text-muted-foreground">{media.first_air_date.split('-')[0]}</span>
+            )}
           </div>
         </CardContent>
       </Card>
