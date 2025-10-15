@@ -1,19 +1,12 @@
-import { MongoClient } from 'mongodb'
-import { v4 as uuidv4 } from 'uuid'
 import { NextResponse } from 'next/server'
 
-// MongoDB connection
-let client
-let db
+// TMDB API Configuration
+const TMDB_API_KEY = process.env.TMDB_API_KEY
+const TMDB_BASE_URL = 'https://api.themoviedb.org/3'
 
-async function connectToMongo() {
-  if (!client) {
-    client = new MongoClient(process.env.MONGO_URL)
-    await client.connect()
-    db = client.db(process.env.DB_NAME)
-  }
-  return db
-}
+// In-memory cache for TMDB responses
+const cache = new Map()
+const CACHE_TTL = 1000 * 60 * 15 // 15 minutes
 
 // Helper function to handle CORS
 function handleCORS(response) {
@@ -29,56 +22,152 @@ export async function OPTIONS() {
   return handleCORS(new NextResponse(null, { status: 200 }))
 }
 
+// Cache helper
+function getCached(key) {
+  const cached = cache.get(key)
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.data
+  }
+  return null
+}
+
+function setCache(key, data) {
+  cache.set(key, { data, timestamp: Date.now() })
+}
+
+// TMDB API helper
+async function fetchTMDB(endpoint) {
+  const cacheKey = endpoint
+  const cached = getCached(cacheKey)
+  if (cached) return cached
+
+  const url = `${TMDB_BASE_URL}${endpoint}${endpoint.includes('?') ? '&' : '?'}api_key=${TMDB_API_KEY}`
+  
+  try {
+    const response = await fetch(url)
+    if (!response.ok) {
+      throw new Error(`TMDB API error: ${response.status}`)
+    }
+    const data = await response.json()
+    setCache(cacheKey, data)
+    return data
+  } catch (error) {
+    console.error('TMDB fetch error:', error)
+    throw error
+  }
+}
+
 // Route handler function
 async function handleRoute(request, { params }) {
   const { path = [] } = params
   const route = `/${path.join('/')}`
   const method = request.method
+  const { searchParams } = new URL(request.url)
 
   try {
-    const db = await connectToMongo()
-
-    // Root endpoint - GET /api/root (since /api/ is not accessible with catch-all)
-    if (route === '/root' && method === 'GET') {
-      return handleCORS(NextResponse.json({ message: "Hello World" }))
-    }
-    // Root endpoint - GET /api/root (since /api/ is not accessible with catch-all)
+    // Health check
     if (route === '/' && method === 'GET') {
-      return handleCORS(NextResponse.json({ message: "Hello World" }))
+      return handleCORS(NextResponse.json({ message: "VidKing Media API" }))
     }
 
-    // Status endpoints - POST /api/status
-    if (route === '/status' && method === 'POST') {
-      const body = await request.json()
-      
-      if (!body.client_name) {
-        return handleCORS(NextResponse.json(
-          { error: "client_name is required" }, 
-          { status: 400 }
-        ))
+    // TMDB Proxy Routes
+    
+    // Search multi (movies, TV shows, people)
+    if (route === '/tmdb/search' && method === 'GET') {
+      const query = searchParams.get('q')
+      if (!query) {
+        return handleCORS(NextResponse.json({ error: 'Query parameter required' }, { status: 400 }))
       }
-
-      const statusObj = {
-        id: uuidv4(),
-        client_name: body.client_name,
-        timestamp: new Date()
-      }
-
-      await db.collection('status_checks').insertOne(statusObj)
-      return handleCORS(NextResponse.json(statusObj))
+      const data = await fetchTMDB(`/search/multi?query=${encodeURIComponent(query)}&include_adult=false`)
+      return handleCORS(NextResponse.json(data))
     }
 
-    // Status endpoints - GET /api/status
-    if (route === '/status' && method === 'GET') {
-      const statusChecks = await db.collection('status_checks')
-        .find({})
-        .limit(1000)
-        .toArray()
+    // Get movie details
+    if (route.startsWith('/tmdb/movie/') && method === 'GET') {
+      const id = path[2]
+      const data = await fetchTMDB(`/movie/${id}?append_to_response=credits,videos,similar`)
+      return handleCORS(NextResponse.json(data))
+    }
 
-      // Remove MongoDB's _id field from response
-      const cleanedStatusChecks = statusChecks.map(({ _id, ...rest }) => rest)
+    // Get TV show details
+    if (route.startsWith('/tmdb/tv/') && !route.includes('/season/') && method === 'GET') {
+      const id = path[2]
+      const data = await fetchTMDB(`/tv/${id}?append_to_response=credits,videos,similar`)
+      return handleCORS(NextResponse.json(data))
+    }
+
+    // Get TV season details
+    if (route.includes('/season/') && method === 'GET') {
+      const tvId = path[2]
+      const seasonNum = path[4]
+      const data = await fetchTMDB(`/tv/${tvId}/season/${seasonNum}`)
+      return handleCORS(NextResponse.json(data))
+    }
+
+    // Trending
+    if (route === '/tmdb/trending' && method === 'GET') {
+      const mediaType = searchParams.get('type') || 'all'
+      const timeWindow = searchParams.get('time') || 'week'
+      const data = await fetchTMDB(`/trending/${mediaType}/${timeWindow}`)
+      return handleCORS(NextResponse.json(data))
+    }
+
+    // Popular movies
+    if (route === '/tmdb/popular/movies' && method === 'GET') {
+      const page = searchParams.get('page') || '1'
+      const data = await fetchTMDB(`/movie/popular?page=${page}`)
+      return handleCORS(NextResponse.json(data))
+    }
+
+    // Popular TV shows
+    if (route === '/tmdb/popular/tv' && method === 'GET') {
+      const page = searchParams.get('page') || '1'
+      const data = await fetchTMDB(`/tv/popular?page=${page}`)
+      return handleCORS(NextResponse.json(data))
+    }
+
+    // Top rated movies
+    if (route === '/tmdb/top-rated/movies' && method === 'GET') {
+      const page = searchParams.get('page') || '1'
+      const data = await fetchTMDB(`/movie/top_rated?page=${page}`)
+      return handleCORS(NextResponse.json(data))
+    }
+
+    // Top rated TV
+    if (route === '/tmdb/top-rated/tv' && method === 'GET') {
+      const page = searchParams.get('page') || '1'
+      const data = await fetchTMDB(`/tv/top_rated?page=${page}`)
+      return handleCORS(NextResponse.json(data))
+    }
+
+    // Now playing movies
+    if (route === '/tmdb/now-playing' && method === 'GET') {
+      const page = searchParams.get('page') || '1'
+      const data = await fetchTMDB(`/movie/now_playing?page=${page}`)
+      return handleCORS(NextResponse.json(data))
+    }
+
+    // Upcoming movies
+    if (route === '/tmdb/upcoming' && method === 'GET') {
+      const page = searchParams.get('page') || '1'
+      const data = await fetchTMDB(`/movie/upcoming?page=${page}`)
+      return handleCORS(NextResponse.json(data))
+    }
+
+    // Discover with filters
+    if (route === '/tmdb/discover' && method === 'GET') {
+      const type = searchParams.get('type') || 'movie'
+      const genre = searchParams.get('genre') || ''
+      const year = searchParams.get('year') || ''
+      const sortBy = searchParams.get('sort_by') || 'popularity.desc'
+      const page = searchParams.get('page') || '1'
       
-      return handleCORS(NextResponse.json(cleanedStatusChecks))
+      let endpoint = `/${type === 'tv' ? 'tv' : 'movie'}/popular?page=${page}&sort_by=${sortBy}`
+      if (genre) endpoint += `&with_genres=${genre}`
+      if (year) endpoint += `&primary_release_year=${year}`
+      
+      const data = await fetchTMDB(endpoint)
+      return handleCORS(NextResponse.json(data))
     }
 
     // Route not found
@@ -90,7 +179,7 @@ async function handleRoute(request, { params }) {
   } catch (error) {
     console.error('API Error:', error)
     return handleCORS(NextResponse.json(
-      { error: "Internal server error" }, 
+      { error: error.message || "Internal server error" }, 
       { status: 500 }
     ))
   }

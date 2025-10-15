@@ -1,14 +1,14 @@
 import './globals.css'
 
 export const metadata = {
-  title: 'Next.js MongoDB Template',
-  description: 'A simple template with App Router, MongoDB, and shadcn/ui',
+  title: 'VidKing Stream - Movies, TV Shows & Anime',
+  description: 'Stream unlimited movies, TV shows, and anime with VidKing player integration',
 }
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
-      <body>
+    <html lang="en" className="dark">
+      <body className="antialiased">
         {children}
       </body>
     </html>
