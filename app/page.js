@@ -595,6 +595,30 @@ export default function App() {
                                     <p className="font-semibold uppercase">{selectedMedia.original_language}</p>
                                   </div>
                                 )}
+                                {selectedMedia.original_title && selectedMedia.original_title !== selectedMedia.title && (
+                                  <div>
+                                    <p className="text-xs text-muted-foreground mb-1">Original Title</p>
+                                    <p className="font-semibold">{selectedMedia.original_title}</p>
+                                  </div>
+                                )}
+                                {selectedMedia.budget && selectedMedia.budget > 0 && (
+                                  <div>
+                                    <p className="text-xs text-muted-foreground mb-1">Budget</p>
+                                    <p className="font-semibold">${(selectedMedia.budget / 1000000).toFixed(1)}M</p>
+                                  </div>
+                                )}
+                                {selectedMedia.revenue && selectedMedia.revenue > 0 && (
+                                  <div>
+                                    <p className="text-xs text-muted-foreground mb-1">Box Office</p>
+                                    <p className="font-semibold">${(selectedMedia.revenue / 1000000).toFixed(1)}M</p>
+                                  </div>
+                                )}
+                                {selectedMedia.vote_count && (
+                                  <div>
+                                    <p className="text-xs text-muted-foreground mb-1">Total Votes</p>
+                                    <p className="font-semibold">{selectedMedia.vote_count.toLocaleString()}</p>
+                                  </div>
+                                )}
                                 {selectedMedia.production_companies && selectedMedia.production_companies.length > 0 && (
                                   <div className="md:col-span-2">
                                     <p className="text-xs text-muted-foreground mb-2">Production Companies</p>
@@ -607,7 +631,84 @@ export default function App() {
                                     </div>
                                   </div>
                                 )}
+                                {selectedMedia.production_countries && selectedMedia.production_countries.length > 0 && (
+                                  <div className="md:col-span-2">
+                                    <p className="text-xs text-muted-foreground mb-2">Production Countries</p>
+                                    <div className="flex flex-wrap gap-2">
+                                      {selectedMedia.production_countries.map(country => (
+                                        <Badge key={country.iso_3166_1} variant="secondary" className="text-xs">
+                                          {country.name}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
                               </div>
+                              
+                              {/* Cast Information */}
+                              {selectedMedia.credits && selectedMedia.credits.cast && selectedMedia.credits.cast.length > 0 && (
+                                <div className="mt-6 pt-6 border-t border-white/10">
+                                  <h4 className="text-lg font-bold mb-4">Top Cast</h4>
+                                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                                    {selectedMedia.credits.cast.slice(0, 8).map(actor => (
+                                      <div key={actor.id} className="flex items-center gap-2 p-2 rounded-lg bg-white/5">
+                                        {actor.profile_path ? (
+                                          <img 
+                                            src={`https://image.tmdb.org/t/p/w185${actor.profile_path}`}
+                                            alt={actor.name}
+                                            className="w-12 h-12 rounded-full object-cover"
+                                          />
+                                        ) : (
+                                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+                                            <span className="text-xs font-bold">{actor.name.charAt(0)}</span>
+                                          </div>
+                                        )}
+                                        <div className="flex-1 min-w-0">
+                                          <p className="text-sm font-semibold truncate">{actor.name}</p>
+                                          <p className="text-xs text-muted-foreground truncate">{actor.character}</p>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {/* Similar Titles */}
+                              {selectedMedia.similar && selectedMedia.similar.results && selectedMedia.similar.results.length > 0 && (
+                                <div className="mt-6 pt-6 border-t border-white/10">
+                                  <h4 className="text-lg font-bold mb-4">Similar Titles</h4>
+                                  <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                                    {selectedMedia.similar.results.slice(0, 6).map(similar => (
+                                      <div 
+                                        key={similar.id} 
+                                        className="cursor-pointer group"
+                                        onClick={() => {
+                                          setView('browse')
+                                          setTimeout(() => startWatching(similar), 100)
+                                        }}
+                                      >
+                                        <div className="aspect-[2/3] rounded-lg overflow-hidden bg-muted relative">
+                                          {similar.poster_path ? (
+                                            <img 
+                                              src={`https://image.tmdb.org/t/p/w342${similar.poster_path}`}
+                                              alt={similar.title || similar.name}
+                                              className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                                            />
+                                          ) : (
+                                            <div className="w-full h-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+                                              <Film className="w-8 h-8 text-primary/50" />
+                                            </div>
+                                          )}
+                                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                            <Play className="w-8 h-8 text-white" />
+                                          </div>
+                                        </div>
+                                        <p className="text-xs mt-2 truncate">{similar.title || similar.name}</p>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
                             </CardContent>
                           </Card>
                         </div>
