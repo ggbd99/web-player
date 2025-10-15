@@ -526,20 +526,25 @@ export default function App() {
 
   // BROWSE VIEW - Main app
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-foreground">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b">
+      <header className="sticky top-0 z-50 bg-black/40 backdrop-blur-xl border-b border-white/10">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center gap-4">
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-red-600 to-pink-600 bg-clip-text text-transparent">
-              VidKing Stream
-            </h1>
-            <div className="flex-1 max-w-xl">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <div className="flex items-center gap-2">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-600 to-pink-600 flex items-center justify-center shadow-lg shadow-red-500/50">
+                <Play className="w-5 h-5" fill="white" />
+              </div>
+              <h1 className="text-2xl font-black bg-gradient-to-r from-red-500 via-pink-500 to-purple-500 bg-clip-text text-transparent">
+                VidKing
+              </h1>
+            </div>
+            <div className="flex-1 max-w-2xl">
+              <div className="relative group">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
                 <Input
-                  placeholder="Search movies, TV shows, anime..."
-                  className="pl-10"
+                  placeholder="Search for movies, TV shows, anime..."
+                  className="pl-12 h-12 bg-white/5 border-white/10 rounded-xl focus:bg-white/10 focus:border-primary/50 transition-all"
                   value={searchQuery}
                   onChange={(e) => {
                     setSearchQuery(e.target.value)
