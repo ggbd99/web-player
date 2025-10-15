@@ -219,6 +219,12 @@ frontend:
       - working: true
         agent: "main"
         comment: "Implemented TMDB logo image integration in hero section: 1) BACKEND: Updated API routes to accept append_to_response query parameter, added include_image_language=en,null to fetch logo images, 2) FRONTEND: Already fetching detailed data with images for top 5 hero items, extracting logos from images.logos[0].file_path, 3) DISPLAY: Logos shown at max-h-[60px] md:max-h-[80px] (matching Cineby reference), drop-shadow for visibility, graceful fallback to text title when logo unavailable. Verified working with TRON: Ares, The Conjuring: Last Rites, Monster: The Ed Gein Story logos all displaying correctly."
+      - working: false
+        agent: "user"
+        comment: "User reported logos not fetching from TMDB - 'no logo available' message showing. Issue: Backend routes were ignoring query parameters."
+      - working: true
+        agent: "main"
+        comment: "FIXED: Backend API routes were hardcoding append_to_response=credits,videos,similar and ignoring the frontend's request for images. Updated /api/tmdb/movie/{id} and /api/tmdb/tv/{id} routes to respect append_to_response and include_image_language query parameters. Also added .env file with TMDB API key. Verified working with screenshots: TRON: Ares logo (stylized white), The Woman in Cabin 10 logo (text-based), Monster: The Ed Gein Story logo (green stylized) all displaying correctly in hero carousel."
 
   - task: "Video Playback Fix"
     implemented: true

@@ -194,7 +194,7 @@ export default function App() {
 
   async function startWatching(media) {
     const type = media.media_type || (media.first_air_date ? 'tv' : 'movie')
-    const res = await fetch(`/api/tmdb/${type}/${media.id}?append_to_response=credits,similar,images`)
+    const res = await fetch(`/api/tmdb/${type}/${media.id}?append_to_response=credits,similar,images&include_image_language=en,null`)
     const fullDetails = await res.json()
     
     fullDetails.media_type = type
