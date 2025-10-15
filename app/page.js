@@ -558,14 +558,24 @@ export default function App() {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-6">
+      <main className="container mx-auto px-4 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-6">
-            <TabsTrigger value="home">Home</TabsTrigger>
-            <TabsTrigger value="movies">Movies</TabsTrigger>
-            <TabsTrigger value="tv">TV Shows</TabsTrigger>
-            <TabsTrigger value="history">Continue Watching</TabsTrigger>
-            <TabsTrigger value="bookmarks">My List</TabsTrigger>
+          <TabsList className="mb-8 bg-white/5 border border-white/10 p-1 h-auto backdrop-blur-xl">
+            <TabsTrigger value="home" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-600 data-[state=active]:to-pink-600 data-[state=active]:text-white px-6 py-2.5 rounded-lg font-semibold">
+              Home
+            </TabsTrigger>
+            <TabsTrigger value="movies" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-600 data-[state=active]:to-pink-600 data-[state=active]:text-white px-6 py-2.5 rounded-lg font-semibold">
+              Movies
+            </TabsTrigger>
+            <TabsTrigger value="tv" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-600 data-[state=active]:to-pink-600 data-[state=active]:text-white px-6 py-2.5 rounded-lg font-semibold">
+              TV Shows
+            </TabsTrigger>
+            <TabsTrigger value="history" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-600 data-[state=active]:to-pink-600 data-[state=active]:text-white px-6 py-2.5 rounded-lg font-semibold">
+              Continue Watching
+            </TabsTrigger>
+            <TabsTrigger value="bookmarks" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-600 data-[state=active]:to-pink-600 data-[state=active]:text-white px-6 py-2.5 rounded-lg font-semibold">
+              My List
+            </TabsTrigger>
           </TabsList>
 
           {/* Search Results */}
