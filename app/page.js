@@ -319,39 +319,68 @@ export default function App() {
                        (historyItem.progress / historyItem.duration) < 0.95
 
     const progressPercent = hasProgress ? (historyItem.progress / historyItem.duration) * 100 : 0
+    
+    if (isTopTen) {
+      return (
+        <div 
+          className="cursor-pointer group flex-shrink-0 flex items-end w-[200px] sm:w-[240px] md:w-[280px]"
+          onClick={() => onClick(media)}
+        >
+          <div 
+            className="z-0 text-[180px] sm:text-[220px] md:text-[260px] font-black leading-none select-none -mr-16 sm:-mr-20 md:-mr-24 -translate-x-10"
+            style={{
+              color: 'transparent',
+              WebkitTextStroke: '3px #ef4444',
+              textStroke: '1px #ef4444',
+              fontFamily: 'system-ui, -apple-system, sans-serif',
+            }}
+          >
+            {media.topTenNumber}
+          </div>
+          <div className="relative z-10 w-[150px] sm:w-[180px] md:w-[200px] flex-shrink-0">
+            <div className="relative aspect-[2/3] overflow-hidden rounded bg-zinc-900 shadow-xl">
+              {media.poster_path ? (
+                <img 
+                  src={`https://image.tmdb.org/t/p/w500${media.poster_path}`}
+                  alt={media.title || media.name}
+                  className="w-full h-full object-cover transition-all duration-300 group-hover:scale-105"
+                />
+              ) : (
+                <div className="w-full h-full bg-zinc-800 flex items-center justify-center">
+                  <Film className="w-12 h-12 text-zinc-600" />
+                </div>
+              )}
+              {hasProgress && (
+                <div className="absolute bottom-0 left-0 right-0 h-1 bg-zinc-800 z-30">
+                  <div 
+                    className="h-full bg-indigo-600"
+                    style={{ width: `${progressPercent}%` }}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )
+    }
 
     return (
       <div 
-        className={`cursor-pointer group flex-shrink-0 ${isTopTen ? 'w-[180px] sm:w-[220px] md:w-[240px]' : 'w-[150px] sm:w-[180px] md:w-[200px]'}`}
+        className="cursor-pointer group flex-shrink-0 w-[150px] sm:w-[180px] md:w-[200px]"
         onClick={() => onClick(media)}
       >
         <div className="relative aspect-[2/3] overflow-hidden rounded bg-zinc-900 mb-2">
-          {isTopTen && (
-            <div className="absolute bottom-0 left-0 z-20 text-[140px] sm:text-[160px] font-black leading-none text-white/10 select-none pointer-events-none" style={{
-              WebkitTextStroke: '3px rgba(255,255,255,0.4)',
-              textShadow: '0 0 30px rgba(0,0,0,0.9)',
-              fontFamily: 'system-ui, -apple-system, sans-serif'
-            }}>
-              {media.topTenNumber}
-            </div>
-          )}
-          
           {media.poster_path ? (
             <img 
               src={`https://image.tmdb.org/t/p/w500${media.poster_path}`}
               alt={media.title || media.name}
-              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+              className="w-full h-full object-cover transition-all duration-300 group-hover:scale-110"
             />
           ) : (
             <div className="w-full h-full bg-zinc-800 flex items-center justify-center">
               <Film className="w-12 h-12 text-zinc-600" />
             </div>
           )}
-
-          {isTopTen && (
-            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent z-10" />
-          )}
-
           {hasProgress && (
             <div className="absolute bottom-0 left-0 right-0 h-1 bg-zinc-800 z-30">
               <div 
@@ -363,10 +392,10 @@ export default function App() {
         </div>
         
         <div className="space-y-0.5">
-          <h3 className={`font-medium text-white truncate ${isTopTen ? 'text-base' : 'text-sm'}`}>
+          <h3 className="font-medium text-white truncate text-sm">
             {media.title || media.name}
           </h3>
-          <div className={`flex items-center gap-2 text-zinc-500 ${isTopTen ? 'text-sm' : 'text-xs'}`}>
+          <div className="flex items-center gap-2 text-zinc-500 text-xs">
             <span>{media.vote_average?.toFixed(1)}/10</span>
             {(media.release_date || media.first_air_date) && (
               <span>{(media.release_date || media.first_air_date).split('-')[0]}</span>
@@ -389,9 +418,31 @@ export default function App() {
 
     return (
       <div className="space-y-5 py-4">
-        <h2 className={`font-bold px-8 ${isTopTen ? 'text-3xl tracking-tight' : 'text-2xl'}`}>
-          <span className="text-indigo-500 font-black">|</span> {title}
-        </h2>
+        {isTopTen ? (
+          <div className="px-8 flex items-end gap-6">
+            <h2 className="text-6xl sm:text-7xl md:text-8xl font-black leading-none tracking-tighter" style={{
+              color: 'transparent',
+              WebkitTextStroke: '2px #f53232ff',
+              textStroke: '3px #ef4444',
+              fontFamily: 'system-ui, -apple-system, sans-serif'
+            }}>
+              TOP 10
+            </h2>
+            <div className="pb-2">
+              <div className="text-sm md:text-xl font-semibold tracking-[10px] text-white uppercase">
+              CONTENT
+              </div>
+              <div className="text-sm md:text-xl font-semibold tracking-[10px] text-white uppercase">
+              TODAY
+              </div>
+            </div>
+          </div>
+        ) : (
+          <h2 className="font-bold px-8 text-2xl">
+            <span className="text-indigo-500 font-black">|</span> {title}
+          </h2>
+        )}
+        
         <div className="relative group/row">
           <button
             onClick={() => scroll('left')}
@@ -405,7 +456,7 @@ export default function App() {
 
           <div 
             ref={scrollContainerRef}
-            className={`flex overflow-x-auto scrollbar-hide px-8 pb-4 ${isTopTen ? 'gap-6' : 'gap-5'}`}
+            className={`flex overflow-x-auto scrollbar-hide px-8 pb-4 ${isTopTen ? 'gap-8' : 'gap-5'}`}
           >
             {items.map(item => (
               <MediaCard key={item.id} media={item} onClick={onItemClick} />
@@ -752,17 +803,13 @@ export default function App() {
 
                   <div className="relative container mx-auto px-8 h-full flex items-end pb-32">
                     <div className="max-w-3xl space-y-6">
-                      {logoPath ? (
+                      {logoPath && (
                         <img 
                           src={`https://image.tmdb.org/t/p/original${logoPath}`}
                           alt={item.title || item.name}
                           className="max-h-[80px] md:max-h-[100px] w-auto object-contain"
                           style={{ filter: 'drop-shadow(0 4px 30px rgba(0,0,0,0.9))' }}
                         />
-                      ) : (
-                        <div className="h-[80px] md:h-[100px] w-auto bg-zinc-800/50 rounded-md flex items-center justify-center">
-                          <span className="text-zinc-500 text-sm font-semibold">No logo available</span>
-                        </div>
                       )}
 
                       <div className="flex items-center gap-4 text-base">
@@ -813,6 +860,7 @@ export default function App() {
                       </div>
                     </div>
                   </div>
+
                 </div>
               )
             })}
