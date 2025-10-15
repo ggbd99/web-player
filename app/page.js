@@ -1,20 +1,17 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Search, Play, Star, Clock, Bookmark, BookmarkCheck, ArrowLeft, TrendingUp, Film, Tv, X } from 'lucide-react'
+import { Search, Play, Star, Clock, Bookmark, BookmarkCheck, ArrowLeft, TrendingUp, Film, Tv, Info } from 'lucide-react'
 
 export default function App() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
+  const [view, setView] = useState('browse') // 'browse' or 'player'
   const [activeTab, setActiveTab] = useState('home')
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState([])
@@ -22,7 +19,7 @@ export default function App() {
   const [popularMovies, setPopularMovies] = useState([])
   const [popularTV, setPopularTV] = useState([])
   const [selectedMedia, setSelectedMedia] = useState(null)
-  const [playerOpen, setPlayerOpen] = useState(false)
+  const [showDetails, setShowDetails] = useState(false)
   const [currentSeason, setCurrentSeason] = useState(1)
   const [currentEpisode, setCurrentEpisode] = useState(1)
   const [seasons, setSeasons] = useState([])
@@ -31,6 +28,7 @@ export default function App() {
   const [watchHistory, setWatchHistory] = useState([])
   const [bookmarks, setBookmarks] = useState([])
   const [lastPlayerState, setLastPlayerState] = useState(null)
+  const [playerKey, setPlayerKey] = useState(0)
   const iframeRef = useRef(null)
 
   // Load from localStorage
