@@ -126,6 +126,60 @@ backend:
         comment: "Comprehensive backend testing completed. All core TMDB API endpoints working correctly: search (/api/tmdb/search), trending (/api/tmdb/trending), popular movies/TV, movie/TV details, season details. CORS headers properly configured. Caching working correctly with 15-minute TTL. 18/19 tests passed (94.7%). Minor: Large page numbers return 500 instead of graceful 400 error passthrough, but core functionality unaffected."
 
 frontend:
+  - task: "Hero Banner & Top 10 Section"
+    implemented: true
+    working: "NA"
+    file: "/app/app/page.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Added Cineby-style hero banner and Top 10 section: 1) Hero banner at top with large backdrop image of featured trending content, 2) Title, rating, year, type badge overlay, 3) Description with line-clamp-3, 4) Play and See More buttons (white and outlined), 5) Gradient overlays for text visibility, 6) TOP 10 CONTENT TODAY section with unique numbered cards (1-10), 7) Large semi-transparent numbers overlaid on posters with text-stroke effect, 8) Gradient overlay on cards for number visibility, 9) Responsive layout (2-5 columns), 10) Moved regular Trending Now section below Top 10 (items 11-24)."
+
+  - task: "Complete UI Redesign - Clean Professional Look"
+    implemented: true
+    working: "NA"
+    file: "/app/app/page.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Completely redesigned UI based on Cineby.app's clean aesthetic. Changes: 1) Removed all glowing effects and RGB gradient text, 2) Clean dark background (zinc-950/black) with no gradients, 3) Simple white text throughout, 4) Minimal borders and effects, 5) Clean card hovers with simple scale transform, 6) Professional Netflix-like layout, 7) Cleaner tabs with border-bottom indicator instead of gradient backgrounds, 8) Simplified header with just red 'VidKing' text, 9) More grid items per row for better content density, 10) Clean progress bars on cards. Created professional, modern streaming interface."
+      - working: "NA"
+        agent: "user"
+        comment: "User reported that descriptions, cast, similar titles, and other metadata were removed. Only wanted design changes, not content removal."
+      - working: "NA"
+        agent: "main"
+        comment: "Fixed: Added back ALL content that was removed including: 1) Stats cards (rating, runtime, seasons, episodes, year), 2) Tagline, 3) Full overview/description, 4) Genres, 5) Additional metadata (status, language, budget, revenue, votes), 6) Production companies and countries, 7) Top cast with photos, 8) Similar titles section, 9) Episode thumbnails for TV shows. All content restored with clean design styling (zinc-900 cards, zinc-800 borders, no gradients)."
+      - working: "NA"
+        agent: "user"
+        comment: "User wants cards to be even cleaner like Cineby - plain but eye-catching, just poster + text below, no fancy effects."
+      - working: "NA"
+        agent: "main"
+        comment: "Made cards ultra-minimal like Cineby: 1) Removed Card component wrapper - now just div, 2) Removed play button overlay on hover, 3) Removed star icon next to rating, 4) Simplified to just: poster image + title + rating/year in gray text, 5) Only subtle scale on hover (no overlay), 6) Added red bar (|) before section titles like Cineby style, 7) Changed from font-semibold to font-bold on titles. Result: Clean, minimal cards that look exactly like Cineby's design."
+
+  - task: "Video Playback Fix"
+    implemented: true
+    working: true
+    file: "/app/app/page.js, /app/next.config.js"
+    stuck_count: 0
+    priority: "critical"
+    needs_retesting: false
+    status_history:
+      - working: false
+        agent: "user"
+        comment: "User reported videos not playing. Console errors showing permission policy violations for autoplay, encrypted-media, and fullscreen. Player not receiving quality sources."
+      - working: "NA"
+        agent: "main"
+        comment: "Fixed video playback issues: 1) Removed conflicting 'allow' attribute from iframe that was causing permission violations. 2) Updated next.config.js to include proper Content-Security-Policy allowing VidKing embeds (frame-src) and media playback. 3) Added Permissions-Policy header to explicitly allow autoplay, encrypted-media, fullscreen, and picture-in-picture features. Ready for user testing."
+      - working: true
+        agent: "user"
+        comment: "User confirmed video playback is now working correctly."
+
   - task: "Resume Functionality in MediaCard"
     implemented: true
     working: "NA"
@@ -170,6 +224,7 @@ metadata:
 
 test_plan:
   current_focus:
+    - "Video Playback Fix"
     - "Resume Functionality in MediaCard"
     - "Timestamps in Watch History"
     - "Enhanced Description Display"
@@ -178,6 +233,35 @@ test_plan:
   test_priority: "high_first"
 
 agent_communication:
+  - agent: "main"
+    message: |
+      CRITICAL VIDEO PLAYBACK FIX IMPLEMENTED:
+      
+      User reported that videos stopped playing after recent changes. Console showed permission policy violations.
+      
+      ROOT CAUSE IDENTIFIED:
+      1. Conflicting iframe attributes - 'allow' attribute was causing permission violations
+      2. Missing Permissions-Policy headers in next.config.js
+      3. Restrictive Content-Security-Policy not allowing VidKing embeds
+      
+      FIXES APPLIED:
+      1. ✅ Removed problematic 'allow' attribute from iframe (was conflicting with allowFullScreen)
+      2. ✅ Updated Content-Security-Policy in next.config.js to allow:
+         - frame-src: https://www.vidking.net https://api.videasy.net
+         - media-src: * blob: data:
+      3. ✅ Added Permissions-Policy header explicitly allowing:
+         - autoplay=*
+         - encrypted-media=*
+         - fullscreen=*
+         - picture-in-picture=*
+      
+      🎯 Video playback should now work correctly. Please test by playing any movie or TV episode.
+      
+      Previous features still intact:
+      - Resume functionality with badges and progress bars
+      - Watch history with timestamps
+      - Enhanced description display
+      
   - agent: "main"
     message: |
       Implemented all requested features:
